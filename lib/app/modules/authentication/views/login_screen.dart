@@ -5,7 +5,6 @@ import 'package:courier/app/core/theme/theme.dart';
 import 'package:courier/app/modules/bottomNavBar/views/bottom_nav_bar_view.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-// impot 'package:courier/app/core/config/api.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key, required this.controller});
