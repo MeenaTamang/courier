@@ -42,8 +42,8 @@ class _LoginScreenState extends State<LoginScreen> {
       onTimeout: () => throw TimeoutException('Request timed out'),
     );
 
-    if (response.statusCode == 200) {
-      final jsonData = jsonDecode(response.body);
+    final jsonData = jsonDecode(response.body);
+    if (jsonData["success"] == true) {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => const BottomNavBarView()),

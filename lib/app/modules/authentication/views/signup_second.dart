@@ -1,18 +1,89 @@
+import 'dart:convert';
+
 import 'package:courier/app/core/theme/theme.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
 
 class SignUpSecond extends StatefulWidget {
-  const SignUpSecond({super.key, required this.controller});
   final PageController controller;
+  final String userId;
+
+  const SignUpSecond({
+    super.key,
+    required this.controller,
+    required this.userId,
+  });
+  
   @override
   State<SignUpSecond> createState() => _SignUpSecondState();
 }
 
 class _SignUpSecondState extends State<SignUpSecond> {
-  final TextEditingController _fullnameController = TextEditingController();
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _contactController = TextEditingController();
+  final TextEditingController _vehicleNumberController = TextEditingController();
+  final TextEditingController _licenseNumberController = TextEditingController();
+  final TextEditingController _nidController = TextEditingController();
+
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    // Clean up all TextEditingControllers
+    _vehicleNumberController.dispose();
+    _licenseNumberController.dispose();
+    _nidController.dispose();
+    
+    super.dispose();
+  }
+
+  bool _validateForm() {
+    if (_vehicleNumberController.text.isEmpty ||
+        _licenseNumberController.text.isEmpty ||
+        _nidController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please fill in all fields"))
+      );
+      return false;
+    }
+    return true;
+  }
+
+
+    Future<void> _updateUser() async {
+    if (!_validateForm()) return;
+
+    setState(() => _isLoading = true);
+    try {
+      final response = await http.put(
+        Uri.parse('http://192.168.18.7:5183/api/updateUser/${widget.userId}'),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "vehicleNumber": _vehicleNumberController.text.trim(),
+          "licenseNumber": _licenseNumberController.text.trim(),
+          "nationalID": _nidController.text.trim(),
+        }),
+      );
+
+      final data = jsonDecode(response.body);
+      if (data["success"] == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Registration Complete!"))
+        );
+        Navigator.pop(context);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Failed: ${data["message"] ?? "Unknown error"}"))
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error: $e"))
+      );
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -67,7 +138,7 @@ class _SignUpSecondState extends State<SignUpSecond> {
                     SizedBox(
                       height: 40,
                       child: TextField(
-                        controller: _fullnameController,
+                        controller: _vehicleNumberController,
                         textAlign: TextAlign.left,
                         style: const TextStyle(
                           color: Color.fromARGB(255, 0, 0, 0),
@@ -109,7 +180,7 @@ class _SignUpSecondState extends State<SignUpSecond> {
                     SizedBox(
                       height: 40,
                       child: TextField(
-                        controller: _emailController,
+                        controller: _licenseNumberController,
                         textAlign: TextAlign.left,
                         style: const TextStyle(
                           color: Color.fromARGB(255, 0, 0, 0),
@@ -152,7 +223,7 @@ class _SignUpSecondState extends State<SignUpSecond> {
                     SizedBox(
                       height: 40,
                       child: TextField(
-                            controller: _contactController,
+                            controller: _nidController,
                             textAlign: TextAlign.left,
                             style: const TextStyle(
                               color: Color.fromARGB(255, 0, 0, 0),
@@ -189,35 +260,53 @@ class _SignUpSecondState extends State<SignUpSecond> {
                     const SizedBox(
                       height: 25,
                     ),
+
+                    //Create Account Button
                     ClipRRect(
                       borderRadius: const BorderRadius.all(Radius.circular(5)),
                       child: SizedBox(
                         width: 300,
                         height: 56,
                         child: ElevatedButton(
-                          onPressed: () {
-                            widget.controller.animateToPage(2,
-                                duration: const Duration(milliseconds: 500),
-                                curve: Curves.ease);
-                          },
+                          onPressed: _isLoading
+                              ? null
+                              : () async {
+                                  setState(() {
+                                    _isLoading = true;
+                                  });
+                                  await _updateUser();
+                                  setState(() {
+                                    _isLoading = false;
+                                  });
+                                  widget.controller.animateToPage(
+                                    2,
+                                    duration: const Duration(milliseconds: 500),
+                                    curve: Curves.ease,
+                                  );
+                                },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor:  MaterialTheme.blueColorScheme().surfaceTint,
+                            backgroundColor: MaterialTheme.blueColorScheme().surfaceTint,
                           ),
-                          child: const Text(
-                            'Create account',
-                            style: TextStyle(
-                              color: Color.fromARGB(255, 0, 0, 0),
-                              fontSize: 15,
-                              fontFamily: 'Poppins',
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
+                          child: _isLoading
+                              ? const CircularProgressIndicator(color: Colors.white)
+                              : const Text(
+                                  'Create account',
+                                  style: TextStyle(
+                                    color: Color.fromARGB(255, 0, 0, 0),
+                                    fontSize: 15,
+                                    fontFamily: 'Poppins',
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
                         ),
                       ),
                     ),
+
                     const SizedBox(
                       height: 15,
                     ),
+
+                    //Already have an account
                     Row(
                       children: [
                         const Text(
