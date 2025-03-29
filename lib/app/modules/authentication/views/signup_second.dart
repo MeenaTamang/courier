@@ -6,13 +6,25 @@ import 'package:http/http.dart' as http;
 
 
 class SignUpSecond extends StatefulWidget {
+  final String fullName;
+  final String email;
+  final String password;
+  final String contactNumber;
+  final String homeAddress;
+  // final PageController pageController;
+
+
   final PageController controller;
-  final String userId;
+  // final String userId;
 
   const SignUpSecond({
-    super.key,
+    required this.fullName,
+    required this.email,
+    required this.password,
+    required this.contactNumber,
+    required this.homeAddress,
+    // required this.pageController,
     required this.controller,
-    required this.userId,
   });
   
   @override
@@ -22,7 +34,7 @@ class SignUpSecond extends StatefulWidget {
 class _SignUpSecondState extends State<SignUpSecond> {
   final TextEditingController _vehicleNumberController = TextEditingController();
   final TextEditingController _licenseNumberController = TextEditingController();
-  final TextEditingController _nidController = TextEditingController();
+  final TextEditingController _nationalIDNumberController = TextEditingController();
 
   bool _isLoading = false;
 
@@ -31,7 +43,7 @@ class _SignUpSecondState extends State<SignUpSecond> {
     // Clean up all TextEditingControllers
     _vehicleNumberController.dispose();
     _licenseNumberController.dispose();
-    _nidController.dispose();
+    _nationalIDNumberController.dispose();
     
     super.dispose();
   }
@@ -39,7 +51,7 @@ class _SignUpSecondState extends State<SignUpSecond> {
   bool _validateForm() {
     if (_vehicleNumberController.text.isEmpty ||
         _licenseNumberController.text.isEmpty ||
-        _nidController.text.isEmpty) {
+        _nationalIDNumberController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Please fill in all fields"))
       );
@@ -49,35 +61,41 @@ class _SignUpSecondState extends State<SignUpSecond> {
   }
 
 
-    Future<void> _updateUser() async {
+    Future<void> _registerUser() async {
     if (!_validateForm()) return;
 
     setState(() => _isLoading = true);
     try {
-      final response = await http.put(
-        Uri.parse('http://192.168.18.7:5183/api/updateUser/${widget.userId}'),
-        headers: {"Content-Type": "application/json"},
+      final response = await http.post(
+        Uri.parse('http://192.168.18.7:5183/api/registration/create'),
+        headers: {
+          "Content-Type": "application/json"},
         body: jsonEncode({
-          "vehicleNumber": _vehicleNumberController.text.trim(),
+          "fullName": widget.fullName,
+          "email": widget.email,
+          "password": widget.password,
+          "contactNumber": widget.contactNumber,
+          "homeAddress": widget.homeAddress,
+          "vehicleRegistrationNumber": _vehicleNumberController.text.trim(),
           "licenseNumber": _licenseNumberController.text.trim(),
-          "nationalID": _nidController.text.trim(),
+          "nationalIdNumber": _nationalIDNumberController.text.trim(),
         }),
       );
+
+      if (response.body.isEmpty) throw Exception("Empty response from server");
 
       final data = jsonDecode(response.body);
       if (data["success"] == true) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Registration Complete!"))
+          const SnackBar(content: Text("Registration Complete!")),
         );
         Navigator.pop(context);
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Failed: ${data["message"] ?? "Unknown error"}"))
-        );
+        throw Exception(data["message"] ?? "Registration failed");
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: $e"))
+        SnackBar(content: Text("Error: ${e.toString()}")),
       );
     } finally {
       setState(() => _isLoading = false);
@@ -223,7 +241,7 @@ class _SignUpSecondState extends State<SignUpSecond> {
                     SizedBox(
                       height: 40,
                       child: TextField(
-                            controller: _nidController,
+                            controller: _nationalIDNumberController,
                             textAlign: TextAlign.left,
                             style: const TextStyle(
                               color: Color.fromARGB(255, 0, 0, 0),
@@ -270,20 +288,7 @@ class _SignUpSecondState extends State<SignUpSecond> {
                         child: ElevatedButton(
                           onPressed: _isLoading
                               ? null
-                              : () async {
-                                  setState(() {
-                                    _isLoading = true;
-                                  });
-                                  await _updateUser();
-                                  setState(() {
-                                    _isLoading = false;
-                                  });
-                                  widget.controller.animateToPage(
-                                    2,
-                                    duration: const Duration(milliseconds: 500),
-                                    curve: Curves.ease,
-                                  );
-                                },
+                              : _registerUser,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: MaterialTheme.blueColorScheme().surfaceTint,
                           ),

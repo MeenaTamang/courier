@@ -1,8 +1,5 @@
-import 'dart:convert';
-
 import 'package:courier/app/core/theme/theme.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 
 import 'signup_second.dart';
 
@@ -17,15 +14,15 @@ class SignUpScreen extends StatefulWidget {
 }
 
 class _SignUpScreenState extends State<SignUpScreen> {
-  final PageController _pageController = PageController();
+  // final PageController _pageController = PageController();
   final TextEditingController _fullnameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passController = TextEditingController();
-  final TextEditingController _contactController = TextEditingController();
-  final TextEditingController _addressController = TextEditingController();
+  final TextEditingController _contactNumberController = TextEditingController();
+  final TextEditingController _homeAddressController = TextEditingController();
 
   bool _isLoading = false;
-    String? userId; // Store user ID for the second screen
+    // String? userId; // Store user ID for the second screen
 
     @override
     void dispose() {
@@ -33,8 +30,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
       _fullnameController.dispose();
       _emailController.dispose();
       _passController.dispose();
-      _contactController.dispose();
-      _addressController.dispose();
+      _contactNumberController.dispose();
+      _homeAddressController.dispose();
       
       super.dispose();
     }
@@ -43,8 +40,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
       if (_fullnameController.text.isEmpty ||
           _emailController.text.isEmpty ||
           _passController.text.isEmpty ||
-          _contactController.text.isEmpty ||
-          _addressController.text.isEmpty) {
+          _contactNumberController.text.isEmpty ||
+          _homeAddressController.text.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Please fill in all fields"))
         );
@@ -57,44 +54,36 @@ class _SignUpScreenState extends State<SignUpScreen> {
       if (!_validateForm()) return;
       
       setState(() => _isLoading = true);
-      try {
-        final response = await http.post(
-          Uri.parse('http://192.168.18.7:5183/api/register'),
-          headers: {"Content-Type": "application/json"},
-          body: jsonEncode({
-            "fullName": _fullnameController.text.trim(),
-            "email": _emailController.text.toLowerCase().trim(),
-            "password": _passController.text,
-            "contact": _contactController.text,
-            "address": _addressController.text.trim(),
-          }),
-        );
 
-        final data = jsonDecode(response.body);
-        if (data["success"] == true) {
-          userId = data["userId"];
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => SignUpSecond(
-                controller: _pageController,
-                userId: userId!,
-              ),
+      try {
+        // Gather data but don't call API yet, just pass it to the next screen
+        String fullName = _fullnameController.text.trim();
+        String email = _emailController.text.toLowerCase().trim();
+        String password = _passController.text;
+        String contactNumber = _contactNumberController.text.trim();
+        String homeAddress = _homeAddressController.text.trim();
+
+        // Navigate to the second screen and pass collected data along with userId
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => SignUpSecond(
+              fullName: fullName,
+              email: email,
+              password: password,
+              contactNumber: contactNumber,
+              homeAddress: homeAddress, controller: PageController(),
             ),
-          );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Failed: ${data["message"] ?? "Unknown error"}")),
-          );
-        }
+          ),
+        );
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error: $e")),
+          SnackBar(content: Text("Error: ${e.toString()}")),
         );
       } finally {
         setState(() => _isLoading = false);
       }
-  }
+      }
 
   @override
   Widget build(BuildContext context) {
@@ -287,7 +276,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     SizedBox(
                       height: 40,
                       child: TextField(
-                            controller: _contactController,
+                            controller: _contactNumberController,
                             textAlign: TextAlign.left,
                             style: const TextStyle(
                               color: Color.fromARGB(255, 0, 0, 0),
@@ -332,7 +321,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     SizedBox(
                       height: 40,
                       child: TextField(
-                            controller: _addressController,
+                            controller: _homeAddressController,
                             textAlign: TextAlign.left,
                             style: const TextStyle(
                               color: Color.fromARGB(255, 0, 0, 0),
@@ -382,20 +371,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         child: ElevatedButton(
                           onPressed: _isLoading
                               ? null
-                              : () async {
-                                  setState(() => _isLoading = true);
-                                  if (_validateForm()) {
-                                    await _registerUser();
-                                    if (userId != null) {
-                                      widget.controller.animateToPage(
-                                        2,
-                                        duration: const Duration(milliseconds: 500),
-                                        curve: Curves.ease,
-                                      );
-                                    }
-                                  }
-                                  setState(() => _isLoading = false);
-                                },
+                              : _registerUser,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: MaterialTheme.blueColorScheme().surfaceTint,
                           ),
