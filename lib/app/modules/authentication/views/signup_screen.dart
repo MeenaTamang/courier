@@ -382,22 +382,19 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         child: ElevatedButton(
                           onPressed: _isLoading
                               ? null
-                              : () {
-                                  setState(() {
-                                    _isLoading = true;
-                                  });
-
-                                  _registerUser().then((_) {
-                                    setState(() {
-                                      _isLoading = false;
-                                    });
-
-                                    widget.controller.animateToPage(
-                                      2,
-                                      duration: const Duration(milliseconds: 500),
-                                      curve: Curves.ease,
-                                    );
-                                  });
+                              : () async {
+                                  setState(() => _isLoading = true);
+                                  if (_validateForm()) {
+                                    await _registerUser();
+                                    if (userId != null) {
+                                      widget.controller.animateToPage(
+                                        2,
+                                        duration: const Duration(milliseconds: 500),
+                                        curve: Curves.ease,
+                                      );
+                                    }
+                                  }
+                                  setState(() => _isLoading = false);
                                 },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: MaterialTheme.blueColorScheme().surfaceTint,

@@ -41,7 +41,7 @@ class _AuthenticationViewState extends State<AuthenticationView> {
           } else if (index == 1) {
             return SignUpScreen(controller: controller);
           } else {
-            return SignUpSecond(controller: controller);
+            return SignUpSecond(controller: controller, userId: '',);
           }
         },
       ),
