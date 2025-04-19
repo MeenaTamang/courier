@@ -15,10 +15,18 @@ class ProfileDetailsView extends GetView<ProfileDetailsController> {
         title: const Text('Profile Details'),
         centerTitle: true,
       ),
-      body: const Center(
-        child: Text(
-          'ProfileDetailsView plus maps',
-          style: TextStyle(fontSize: 20),
+      body: Container(
+        decoration: BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage('assets/images/firstLayer.jpg'),
+            fit: BoxFit.cover,
+          ),
+        ),
+        child: const Center(
+          child: Text(
+            'ProfileDetailsView plus maps',
+            style: TextStyle(fontSize: 20),
+          ),
         ),
       ),
     );

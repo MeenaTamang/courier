@@ -9,110 +9,130 @@ class OrdersView extends GetView<OrdersController> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: MaterialTheme.blueColorScheme().primary,
+      // backgroundColor: MaterialTheme.blueColorScheme().primary,
       appBar: AppBar(
         backgroundColor: MaterialTheme.blueColorScheme().secondary,
         title: const Text('Orders'),
         centerTitle: true,
       ),
-      body: ListView(
-        children: [
-          SizedBox(height: 15,),
-          
-          Padding(
-            padding: const EdgeInsets.only(left: 17.0, right: 17.0, top: 5.0, bottom: 7.0),
-            child: Container(
-              height: 80,
-              decoration: BoxDecoration(
-                color: MaterialTheme.blueColorScheme().secondaryContainer,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-              BoxShadow(
-                color: const Color.fromARGB(255, 46, 49, 116).withOpacity(0.3), // Shadow color with opacity
-                spreadRadius: 1, // How far the shadow will spread
-                blurRadius: 9, // The blur effect for the shadow
-                offset: Offset(0, 2), // The offset of the shadow (x, y)
-              ),
-            ],
-            ),
-            child: Row(mainAxisAlignment: MainAxisAlignment.start,
-            children: [
-              Padding(padding: const EdgeInsets.all(15),
-              child: Icon(
-                Icons.local_shipping_outlined,
-                size: 40,
-                color: Colors.black,
-                ),
-              ),
-            Expanded(child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 6.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                    //Location
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.location_on_outlined,
-                        size: 15,
-                        color: Colors.black,
+      body: Container(
+        decoration: BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage('assets/images/firstLayer.jpg'),
+            fit: BoxFit.cover,
+          ),
+        ),
+        child: Obx(() {
+          if (controller.isLoading.value) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          return ListView.builder(
+            itemCount: controller.orderList.length,
+            itemBuilder: (context, index) {
+              final order = controller.orderList[index];
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 17.0, vertical: 7.0),
+                child: Container(
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: MaterialTheme.blueColorScheme().secondaryContainer,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color.fromARGB(255, 46, 49, 116).withOpacity(0.3),
+                        spreadRadius: 1,
+                        blurRadius: 9,
+                        offset: const Offset(0, 2),
                       ),
-                      SizedBox(width: 1),
-                      Text(
-                        
-                        'Jhamshikhel, Lalitpur',
-                        style: TextStyle(
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: [
+                      const Padding(
+                        padding: EdgeInsets.all(15),
+                        child: Icon(
+                          Icons.local_shipping_outlined,
+                          size: 40,
                           color: Colors.black,
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.bold
+                        ),
+                      ),
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 6.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.location_on_outlined,
+                                    size: 15,
+                                    color: Colors.black,
+                                  ),
+                                  const SizedBox(width: 1),
+                                  Text(
+                                    '${order.deliveryAddress}, ',
+                                    style: const TextStyle(
+                                      color: Colors.black,
+                                      fontSize: 13.5,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  Text(
+                                    order.deliveryZone,
+                                    style: const TextStyle(
+                                      color: Colors.black,
+                                      fontSize: 13.5,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'PKR-123123 ~ 1.5 km',
+                                // 'PKR-${order.orderCode ?? 'XXXXXXX'} ~ ${order.distance ?? '1.5 km'}',
+                                style: const TextStyle(
+                                  color: Colors.black,
+                                  fontSize: 11,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'NPR 100',
+                                // 'Price: NPR ${order.price ?? '100'}',
+                                style: const TextStyle(
+                                  color: Colors.black,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Transform.scale(
+                          scale: 2,
+                          child: Checkbox(
+                            value: false,
+                            onChanged: (bool? newValue) {
+                              // Handle checkbox state
+                            },
+                          ),
                         ),
                       ),
                     ],
                   ),
-                  SizedBox(height: 4,),
-                  //Distance
-                  Text(
-                    'PKR-1234567 ~ 1.5 km',
-                    style: TextStyle(
-                      color: Colors.black,
-                      fontSize: 11,
-                    ),
-                  ),
-                  SizedBox(height: 4,),
-                  //Price
-                  Text(
-                    'Price: NPR 100',
-                    style: TextStyle(
-                      color: Colors.black,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold
-                    ),
-                  ),
-                ],
-              ),
-              ),
-            ),
-
-          //checkbox
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Transform.scale(
-              scale: 2, // Adjust the scale to increase the size of the checkbox
-              child: Checkbox(
-                value: true, // Change to dynamic value (e.g., controller.value)
-                onChanged: (bool? newvalue) {
-                  //handle checkbox state change
-                },
-              ),
-            ),
-          ),
-          ],
-          ),
-          ),
-          ),
-
-        ],
+                ),
+              );
+            },
+          );
+        }),
       )
     );
   }

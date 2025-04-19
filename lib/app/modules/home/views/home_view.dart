@@ -15,7 +15,7 @@ class HomeView extends GetView<HomeController> {
       child: Column(
       mainAxisAlignment: MainAxisAlignment.start,
       children: <Widget>[
-        SizedBox(height: size.height * 0.73),
+        SizedBox(height: size.height * 0.6),
 
       
                 Material(
@@ -24,20 +24,17 @@ class HomeView extends GetView<HomeController> {
                     onTap: () {
                       Get.toNamed('/authentication?index=1');
                     },
-                    // onTap: () {
-                    //   controller.animateToPage(
-                    //     1,
-                    //     duration: const Duration(milliseconds: 300),
-                    //     curve: Curves.easeInOut,
-                    //   );
-                    // },
                     borderRadius: BorderRadius.circular(20), // Ensures ripple effect follows the shape
                     child: Ink(
                       height: 40,
                       width: 160,
                       decoration: BoxDecoration(
-                        color: MaterialTheme.blueColorScheme().surfaceTint,
+                        color: MaterialTheme.blueColorScheme().onSecondaryContainer.withOpacity(0.4),
                         borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: Colors.white,
+                          width: 1,
+                        ),
                       ),
                       child: const Center(
                         child: Text(
@@ -69,8 +66,12 @@ class HomeView extends GetView<HomeController> {
                       height: 40,
                       width: 160,
                       decoration: BoxDecoration(
-                        color: MaterialTheme.blueColorScheme().surfaceTint,
+                        color: MaterialTheme.blueColorScheme().onSecondaryContainer.withOpacity(0.4),
                         borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: Colors.white,
+                          width: 1,
+                        ),
                       ),
                       child: const Center(
                         child: Text(

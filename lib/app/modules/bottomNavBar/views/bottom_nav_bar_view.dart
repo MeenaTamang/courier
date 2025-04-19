@@ -43,9 +43,9 @@ class _BottomNavBarViewState extends State<BottomNavBarView> {
           Icon(Icons.history, size: 30), // History Page
           Icon(Icons.perm_identity, size: 30), // Profile Page
         ],
-        color: MaterialTheme.blueColorScheme().secondary,
-        buttonBackgroundColor: MaterialTheme.blueColorScheme().surfaceTint,
-        backgroundColor: MaterialTheme.blueColorScheme().primary,
+        color: MaterialTheme.blueColorScheme().onSecondaryContainer,
+        buttonBackgroundColor: MaterialTheme.blueColorScheme().secondary,
+        backgroundColor: Colors.transparent,
         animationCurve: Curves.easeInOut,
         animationDuration: Duration(milliseconds: 600),
         onTap: (index) {

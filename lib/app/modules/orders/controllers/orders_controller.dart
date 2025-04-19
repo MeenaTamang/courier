@@ -1,38 +1,50 @@
+import 'package:courier/app/data/models/order_model.dart';
+import 'package:courier/app/data/services/api_service.dart';
 import 'package:get/get.dart';
 
 class OrdersController extends GetxController {
-  //TODO: Implement OrdersController
-  // final ItemScrollController itemScrollController = ItemScrollController();
-  // final ItemPositionsListener itemPositionsListener = ItemPositionsListener.create();
-  // void scrollToIndex(int index) {
-  //   itemScrollController.scrollTo(
-  //     index: index,
-  //     duration: const Duration(milliseconds: 500),
-  //     curve: Curves.easeInOut,
-  //   );
-  // }
+  var isLoading = true.obs;
+  var orderList = <Order>[].obs;
 
-  final count = 0.obs;
-
-  get boxHeight => null;
-
-  get boxColor => null;
-
-  get toggleBox => null;
   @override
   void onInit() {
+    fetchOrders();
     super.onInit();
   }
 
-  @override
-  void onReady() {
-    super.onReady();
+  void fetchOrders() async {
+    try {
+      isLoading(true);
+      var orders = await ApiService().fetchOrders();
+      orderList.value = orders;
+    } catch (e) {
+      Get.snackbar("Error", e.toString());
+    } finally {
+      isLoading(false);
+    }
   }
 
-  @override
-  void onClose() {
-    super.onClose();
-  }
+  // final count = 0.obs;
 
-  void increment() => count.value++;
+  // get boxHeight => null;
+
+  // get boxColor => null;
+
+  // get toggleBox => null;
+  // @override
+  // void onInit() {
+  //   super.onInit();
+  // }
+
+  // @override
+  // void onReady() {
+  //   super.onReady();
+  // }
+
+  // @override
+  // void onClose() {
+  //   super.onClose();
+  // }
+
+  // void increment() => count.value++;
 }

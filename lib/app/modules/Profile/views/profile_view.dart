@@ -11,23 +11,32 @@ class ProfileView extends GetView<ProfileController> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: MaterialTheme.blueColorScheme().primary,
+      // backgroundColor: MaterialTheme.blueColorScheme().primary,
       appBar: AppBar(
         backgroundColor: MaterialTheme.blueColorScheme().secondary,
         title: const Text('Profile'),
         centerTitle: true,
       ),
-      body: Column(
-        children: [
-          const SizedBox(height: 15),
-          Center(child: _buildAvatar()),
-          const SizedBox(height: 7),
-          _buildProfileInfo(),
-          const SizedBox(height: 15),
-          _buildNavigationIcons(),
-          const SizedBox(height: 25),
-          _buildAdditionalInfo(),
-        ],
+      body: Container(
+        decoration: BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage('assets/images/firstLayer.jpg'),
+            fit: BoxFit.cover,
+          ),
+        ),
+
+        child: Column(
+          children: [
+            const SizedBox(height: 15),
+            Center(child: _buildAvatar()),
+            const SizedBox(height: 7),
+            _buildProfileInfo(),
+            const SizedBox(height: 15),
+            _buildNavigationIcons(),
+            const SizedBox(height: 25),
+            _buildAdditionalInfo(),
+          ],
+        ),
       ),
     );
   }
@@ -58,15 +67,16 @@ class ProfileView extends GetView<ProfileController> {
   Widget _buildProfileInfo() {
     return Column(
       children: [
-        const Text(
-          'John Doe',
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black),
-        ),
+        Obx(() => Text(
+          controller.user.value.fullname ?? 'Loading...',
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black),
+        )),
         const SizedBox(height: 2),
-        const Text(
-          'License No.: 1234567890',
-          style: TextStyle(fontSize: 14, color: Colors.black),
-        ),
+        Obx(() => Text(
+          'License No.: ${controller.user.value.licenseNumber ?? 'Loading...'}',
+          style: const TextStyle(fontSize: 14, color: Colors.black),
+        )),
+
       ],
     );
   }
@@ -115,13 +125,10 @@ class ProfileView extends GetView<ProfileController> {
   Widget _buildAdditionalInfo() {
     return Column(
       children: [
-        _infoRow(Icons.location_on_outlined, 'Address', '123 Main St, City, Country'),
-        const SizedBox(height: 15),
-        _infoRow(Icons.email_outlined, 'Email Address', 'john.doe@example.com'),
-        const SizedBox(height: 15),
-        _infoRow(Icons.perm_identity, 'National ID No.', '9876543210'),
-        const SizedBox(height: 15),
-        _infoRow(Icons.phone_outlined, 'Phone Number', '+977 234 567 890'),
+        Obx(() => _infoRow(Icons.location_on_outlined, 'Address', controller.user.value.homeAddress ?? 'Loading...')),
+        Obx(() => _infoRow(Icons.email_outlined, 'Email Address', controller.user.value.email ?? 'Loading...')),
+        Obx(() => _infoRow(Icons.perm_identity, 'National ID No.', controller.user.value.nationalIDNumber ?? 'Loading...')),
+        Obx(() => _infoRow(Icons.phone_outlined, 'Phone Number', controller.user.value.contactNumber ?? 'Loading...')),
       ],
     );
   }

@@ -13,12 +13,12 @@ class MaterialTheme {
       surfaceTint: Color.fromARGB(255, 243, 187, 55), // Orange color for surface tint
       onPrimary: Color.fromARGB(255, 232, 224, 178), // White text on primary
       primaryContainer: Color(0xFFBBDEFB), // Light blue for primary container
-      onPrimaryContainer: Color(0xFF0D47A1), // Dark blue on container
+      onPrimaryContainer: Color.fromARGB(255, 56, 114, 201), // Dark blue on container
       secondary: Color.fromARGB(247, 123, 130, 187), // Light blue for secondary
       onSecondary: Color.fromARGB(255, 225, 193, 119), // White text on secondary
       secondaryContainer:
           Color.fromARGB(247, 134, 138, 170), // Light blue for secondary container
-      onSecondaryContainer: Color(0xFF0288D1), // Dark blue on container
+      onSecondaryContainer: Color.fromARGB(255, 102, 126, 185), // Dark blue on container
       error: Color(0xFFD32F2F), // Red error color
       onError: Color(0xFFFFFFFF), // White text on error
       errorContainer: Color(0xFFFFCDD2), // Light red for error container

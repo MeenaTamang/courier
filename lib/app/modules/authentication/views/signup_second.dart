@@ -67,7 +67,7 @@ class _SignUpSecondState extends State<SignUpSecond> {
     setState(() => _isLoading = true);
     try {
       final response = await http.post(
-        Uri.parse('http://192.168.18.7:5183/api/registration/create'),
+        Uri.parse('http://192.168.1.148:5183/api/registration/create'),
         headers: {
           "Content-Type": "application/json"},
         body: jsonEncode({
@@ -106,33 +106,35 @@ class _SignUpSecondState extends State<SignUpSecond> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: MaterialTheme.blueColorScheme().primary,
-      body: SingleChildScrollView(
-        child: Container(
-          width: double.infinity,
-            height: MediaQuery.of(context).size.height,
-            decoration: BoxDecoration(
-                image:DecorationImage(image:AssetImage("assets/images/bg.png"),
-                alignment: Alignment.bottomCenter,
-                fit: BoxFit.cover
-                ),
+      body: Container(
+        width: double.infinity,
+          height: MediaQuery.of(context).size.height,
+          decoration: BoxDecoration(
+              image:DecorationImage(image:AssetImage("assets/images/logsign.jpg"),
+              alignment: Alignment.bottomCenter,
+              fit: BoxFit.cover
               ),
+            ),
+        child: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Padding(
-                padding: const EdgeInsets.only(left: 15, top: 15),
-                child: Image.asset(
-                  "assets/images/car1.png",
-                    width: 270,
-                    height: 275,
-                ),
-              ),
+              // Padding(
+              //   padding: const EdgeInsets.only(left: 15, top: 15),
+              //   child: Image.asset(
+              //     "assets/images/car1.png",
+              //       width: 270,
+              //       height: 275,
+              //   ),
+              // ),
           
               // const SizedBox(
               //   height: 18,
               // ),
-          
+              const SizedBox(
+                height: 200,
+              ),
+
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 50),
                 child: Column(
@@ -149,7 +151,7 @@ class _SignUpSecondState extends State<SignUpSecond> {
                       ),
                     ),
                     const SizedBox(
-                      height: 20,
+                      height: 50,
                     ),
           
                     //Vehicle Number
@@ -189,11 +191,11 @@ class _SignUpSecondState extends State<SignUpSecond> {
                         ),
                       ),
                     ),
-
+                
                   const SizedBox(
                       height: 25,
                     ),
-
+                
                     //license number
                     SizedBox(
                       height: 40,
@@ -236,7 +238,7 @@ class _SignUpSecondState extends State<SignUpSecond> {
                       height: 25,
                     ),
                     
-
+                
                     //National ID Number
                     SizedBox(
                       height: 40,
@@ -274,11 +276,11 @@ class _SignUpSecondState extends State<SignUpSecond> {
                             ),
                           ),
                     ),
-
+                
                     const SizedBox(
                       height: 25,
                     ),
-
+                
                     //Create Account Button
                     ClipRRect(
                       borderRadius: const BorderRadius.all(Radius.circular(5)),
@@ -290,7 +292,7 @@ class _SignUpSecondState extends State<SignUpSecond> {
                               ? null
                               : _registerUser,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: MaterialTheme.blueColorScheme().surfaceTint,
+                            backgroundColor: MaterialTheme.blueColorScheme().onSecondaryContainer,
                           ),
                           child: _isLoading
                               ? const CircularProgressIndicator(color: Colors.white)
@@ -306,45 +308,45 @@ class _SignUpSecondState extends State<SignUpSecond> {
                         ),
                       ),
                     ),
-
+                
                     const SizedBox(
                       height: 15,
                     ),
-
+                
                     //Already have an account
-                    Row(
-                      children: [
-                        const Text(
-                          ' have an account?',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Color.fromARGB(255, 50, 50, 51),
-                            fontSize: 13,
-                            fontFamily: 'Poppins',
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const SizedBox(
-                          width: 2.5,
-                        ),
-                        InkWell(
-                          onTap: () {
-                            widget.controller.animateToPage(0,
-                                duration: const Duration(milliseconds: 500),
-                                curve: Curves.ease);
-                          },
-                          child: const Text(
-                            'Log In ',
-                            style: TextStyle(
-                              color: Color.fromARGB(255, 243, 187, 55),
-                              fontSize: 13,
-                              fontFamily: 'Poppins',
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                    // Row(
+                    //   children: [
+                    //     const Text(
+                    //       ' have an account?',
+                    //       textAlign: TextAlign.center,
+                    //       style: TextStyle(
+                    //         color: Color.fromARGB(255, 50, 50, 51),
+                    //         fontSize: 13,
+                    //         fontFamily: 'Poppins',
+                    //         fontWeight: FontWeight.w500,
+                    //       ),
+                    //     ),
+                    //     const SizedBox(
+                    //       width: 2.5,
+                    //     ),
+                    //     InkWell(
+                    //       onTap: () {
+                    //         widget.controller.animateToPage(0,
+                    //             duration: const Duration(milliseconds: 500),
+                    //             curve: Curves.ease);
+                    //       },
+                    //       child: const Text(
+                    //         'Log In ',
+                    //         style: TextStyle(
+                    //           color: Color.fromARGB(255, 80, 128, 219),
+                    //           fontSize: 13,
+                    //           fontFamily: 'Poppins',
+                    //           fontWeight: FontWeight.w500,
+                    //         ),
+                    //       ),
+                    //     ),
+                    //   ],
+                    // ),
                   ],
                 ),
               ),
