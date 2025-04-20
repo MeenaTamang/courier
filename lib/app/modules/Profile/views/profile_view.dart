@@ -1,42 +1,89 @@
+import 'dart:convert';
+
 import 'package:courier/app/core/theme/theme.dart';
 import 'package:courier/app/modules/Documents/views/documents_view.dart';
 import 'package:courier/app/modules/ProfileDetails/views/profile_details_view.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:http/http.dart' as http;
 
-import '../controllers/profile_controller.dart';
+class ProfileView extends StatefulWidget {
+   final String userId;  // Declare userId as String if it's returned as String
 
-class ProfileView extends GetView<ProfileController> {
-  const ProfileView({super.key});
+  const ProfileView({super.key, required this.userId});
+  @override
+  State<ProfileView> createState() => _ProfileViewState();
+}
+
+class _ProfileViewState extends State<ProfileView> {
+  Map<String, dynamic>? userData;
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    // Fetch worker details using the userId passed to the ProfileView widget
+    fetchWorkerDetails(widget.userId);  // Correctly access the userId here
+  }
+
+  Future<void> fetchWorkerDetails(String userId) async {
+  final url = Uri.parse('http://192.168.49.16:5183/api/workerdetails/getworkerdetails/$userId');
+
+  try {
+    print("Fetching worker details for userId: $userId");
+    print("URL: $url");
+
+    final response = await http.get(url);
+    print("Status Code: ${response.statusCode}");
+    print("Response: ${response.body}");
+
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> data = json.decode(response.body);
+
+      setState(() {
+        userData = data;
+        isLoading = false;
+      });
+    } else {
+      print("Error: Unexpected status code: ${response.statusCode}");
+      throw Exception('Failed to load worker data');
+    }
+  } catch (e) {
+    print('Error fetching worker data: $e');
+    setState(() => isLoading = false);
+  }
+}
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // backgroundColor: MaterialTheme.blueColorScheme().primary,
       appBar: AppBar(
         backgroundColor: MaterialTheme.blueColorScheme().secondary,
         title: const Text('Profile'),
         centerTitle: true,
       ),
       body: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           image: DecorationImage(
             image: AssetImage('assets/images/firstLayer.jpg'),
             fit: BoxFit.cover,
           ),
         ),
-
-        child: Column(
-          children: [
-            const SizedBox(height: 15),
-            Center(child: _buildAvatar()),
-            const SizedBox(height: 7),
-            _buildProfileInfo(),
-            const SizedBox(height: 15),
-            _buildNavigationIcons(),
-            const SizedBox(height: 25),
-            _buildAdditionalInfo(),
-          ],
-        ),
+        child: isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : Column(
+                children: [
+                  const SizedBox(height: 15),
+                  Center(child: _buildAvatar()),
+                  const SizedBox(height: 7),
+                  _buildProfileInfo(),
+                  const SizedBox(height: 15),
+                  _buildNavigationIcons(),
+                  const SizedBox(height: 25),
+                  _buildAdditionalInfo(),
+                ],
+              ),
       ),
     );
   }
@@ -67,16 +114,15 @@ class ProfileView extends GetView<ProfileController> {
   Widget _buildProfileInfo() {
     return Column(
       children: [
-        Obx(() => Text(
-          controller.user.value.fullname ?? 'Loading...',
+        Text(
+          userData?['fullName'] ?? 'Loading...',
           style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black),
-        )),
+        ),
         const SizedBox(height: 2),
-        Obx(() => Text(
-          'License No.: ${controller.user.value.licenseNumber ?? 'Loading...'}',
+        Text(
+          'License No.: ${userData?['licenseNumber'] ?? 'Loading...'}',
           style: const TextStyle(fontSize: 14, color: Colors.black),
-        )),
-
+        ),
       ],
     );
   }
@@ -95,7 +141,6 @@ class ProfileView extends GetView<ProfileController> {
         const SizedBox(width: 24),
         _iconBox(Icons.logout_outlined, () {
           Get.toNamed('/authentication?index=0');
-          // Future implementation for Menu Options
         }),
       ],
     );
@@ -125,10 +170,13 @@ class ProfileView extends GetView<ProfileController> {
   Widget _buildAdditionalInfo() {
     return Column(
       children: [
-        Obx(() => _infoRow(Icons.location_on_outlined, 'Address', controller.user.value.homeAddress ?? 'Loading...')),
-        Obx(() => _infoRow(Icons.email_outlined, 'Email Address', controller.user.value.email ?? 'Loading...')),
-        Obx(() => _infoRow(Icons.perm_identity, 'National ID No.', controller.user.value.nationalIDNumber ?? 'Loading...')),
-        Obx(() => _infoRow(Icons.phone_outlined, 'Phone Number', controller.user.value.contactNumber ?? 'Loading...')),
+        _infoRow(Icons.location_on_outlined, 'Address', userData?['homeAddress'] ?? 'Loading...'),
+        SizedBox(height: 13),
+        _infoRow(Icons.email_outlined, 'Email Address', userData?['email'] ?? 'Loading...'),
+        SizedBox(height: 13),
+        _infoRow(Icons.perm_identity, 'National ID No.', userData?['nationalIDNumber'] ?? 'Loading...'),
+        SizedBox(height: 13),
+        _infoRow(Icons.phone_outlined, 'Phone Number', userData?['contactNumber'] ?? 'Loading...'),
       ],
     );
   }
@@ -158,7 +206,4 @@ class ProfileView extends GetView<ProfileController> {
       ),
     );
   }
-
-
-
 }

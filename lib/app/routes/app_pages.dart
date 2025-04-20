@@ -32,7 +32,7 @@ part 'app_routes.dart';
 class AppPages {
   AppPages._();
 
-  static const INITIAL = Routes.BOTTOM_NAV_BAR; //HOME;
+  static const INITIAL = Routes.HOME; //HOME;
 
   static final routes = [
     GetPage(
@@ -61,7 +61,7 @@ class AppPages {
     ),
     GetPage(
       name: _Paths.BOTTOM_NAV_BAR,
-      page: () => const BottomNavBarView(),
+      page: () => BottomNavBarView(userId: Get.arguments as String),
       binding: BottomNavBarBinding(),
     ),
     GetPage(
@@ -76,7 +76,7 @@ class AppPages {
     ),
     GetPage(
       name: _Paths.PROFILE,
-      page: () => const ProfileView(),
+      page: () => ProfileView(userId: Get.arguments as String),
       binding: ProfileBinding(),
     ),
     // GetPage(

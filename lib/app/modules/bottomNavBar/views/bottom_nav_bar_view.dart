@@ -6,13 +6,9 @@ import 'package:courier/app/modules/orders/views/orders_view.dart';
 import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'package:flutter/material.dart';
 
-// import '../history/views/history_view.dart';
-// import '../orders/views/orders_view.dart';
-// import '../profile/views/profile_view.dart';
-// import '../selected_orders/views/selected_orders_view.dart';
-
 class BottomNavBarView extends StatefulWidget {
-  const BottomNavBarView({super.key});
+  final String userId; 
+  const BottomNavBarView({super.key, required this.userId});
 
   @override
   _BottomNavBarViewState createState() => _BottomNavBarViewState();
@@ -21,12 +17,19 @@ class BottomNavBarView extends StatefulWidget {
 class _BottomNavBarViewState extends State<BottomNavBarView> {
   int _selectedIndex = 0; // Track selected page index
 
-  final List<Widget> _pages = [
-    OrdersView(),
-    SelectedOrdersView(),
-    HistoryView(),
-    ProfileView(),
-  ];
+  late List<Widget> _pages; // We use `late` because it depends on `widget.userId`
+
+  @override
+  void initState() {
+    super.initState();
+
+    _pages = [
+      OrdersView(),
+      SelectedOrdersView(),
+      HistoryView(),
+      ProfileView(userId: widget.userId), // Pass userId here
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {

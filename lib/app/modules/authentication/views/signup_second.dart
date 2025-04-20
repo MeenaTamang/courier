@@ -67,7 +67,7 @@ class _SignUpSecondState extends State<SignUpSecond> {
     setState(() => _isLoading = true);
     try {
       final response = await http.post(
-        Uri.parse('http://192.168.1.148:5183/api/registration/create'),
+        Uri.parse('http://192.168.49.16:5183/api/registration/create'),
         headers: {
           "Content-Type": "application/json"},
         body: jsonEncode({

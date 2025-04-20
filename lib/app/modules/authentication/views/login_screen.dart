@@ -25,54 +25,50 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool _isLoading = false;
 
-  // Function to send login data to the API
   Future<void> loginUser() async {
-  try {
-    setState(() => _isLoading = true);
-    
-    final url = "http://192.168.1.148:5183/api/login/login";
-    final response = await http.post(
-      Uri.parse(url),
-      headers: {
-        "Content-Type": "application/json",
-        "Accept": "application/json"
-      },
-      body: jsonEncode({
-        "email": _emailController.text,
-        "password": _passController.text,
-      }),
-    ).timeout(
-      const Duration(seconds: 10),
-      onTimeout: () => throw TimeoutException('Request timed out'),
-    );
+    try {
+      setState(() => _isLoading = true);
 
-    final jsonData = jsonDecode(response.body);
-    if (jsonData["success"] == true) {
-      //fetch the data to profile_view.dart after sucessful login
-      await profileController.fetchUserData();
-      Navigator.pushReplacement( //(push) instead of pushReplacement
-        context,
-        MaterialPageRoute(builder: (context) => const BottomNavBarView()),
-      );
-    } else {
-      String message = "Login Failed: ${response.statusCode}";
-      if (response.statusCode == 401) {
-        message = "Invalid email or password";
-      } else if (response.statusCode == 500) {
-        message = "Server error occurred";
+      final url = "http://192.168.49.16:5183/api/login/login";
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+        },
+        body: jsonEncode({
+          "email": _emailController.text,
+          "password": _passController.text,
+        }),
+      ).timeout(const Duration(seconds: 10));
+
+      final jsonData = jsonDecode(response.body);
+
+      if (jsonData["success"] == true) {
+        // Convert userId to String
+        // final String userId = jsonData["data"]; // because "data" itself IS the userId (UUID)
+        String userId = jsonData["data"]; // or jsonData["data"]["userId"] if it's nested
+
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => BottomNavBarView(userId: userId), //  Pass as String
+          ),
+        );
+      } else {
+        final String message = jsonData["message"] ?? "Login failed";
+        final List<dynamic> errors = jsonData["errors"] ?? [];
+        String displayMessage = message + (errors.isNotEmpty ? "\n${errors.join('\n')}" : "");
+
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(displayMessage)));
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+    } finally {
+      setState(() => _isLoading = false);
     }
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Error: ${e.toString()}")),
-    );
-  } finally {
-    setState(() => _isLoading = false);
   }
-}
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
