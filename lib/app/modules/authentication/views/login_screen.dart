@@ -7,6 +7,8 @@ import 'package:courier/app/modules/bottomNavBar/views/bottom_nav_bar_view.dart'
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
+import 'package:jwt_decoder/jwt_decoder.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key, required this.controller});
@@ -29,7 +31,7 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       setState(() => _isLoading = true);
 
-      final url = "http://192.168.49.16:5183/api/login/login";
+      final url = "http://192.168.49.195:5183/api/login/login";
       final response = await http.post(
         Uri.parse(url),
         headers: {
@@ -45,14 +47,28 @@ class _LoginScreenState extends State<LoginScreen> {
       final jsonData = jsonDecode(response.body);
 
       if (jsonData["success"] == true) {
-        // Convert userId to String
-        // final String userId = jsonData["data"]; // because "data" itself IS the userId (UUID)
-        String userId = jsonData["data"]; // or jsonData["data"]["userId"] if it's nested
+        // final String token = jsonData["token"]; // Assuming backend returns { "token": "..." }
+        String? token = jsonData["data"];
+        // var workerId = data["workerId"]; // assuming backend returns this
+        // var workerOrderId = data["workerOrderId"]; // optional
 
-        Navigator.push(
+        if (token == null || token.isEmpty) {
+          throw Exception("Login failed: token is missing");
+        }
+
+        // Decode token
+      Map<String, dynamic> decodedToken = JwtDecoder.decode(token);
+      int workerId = int.tryParse(decodedToken["workerId"].toString()) ?? 0;
+
+      // Save to SharedPreferences
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      await prefs.setString('token', token);
+      await prefs.setInt('workerId', workerId);
+
+        Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) => BottomNavBarView(userId: userId), //  Pass as String
+            builder: (context) => BottomNavBarView(), //  Pass as String
           ),
         );
       } else {
@@ -154,7 +170,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                       const SizedBox(height: 30),
-            
+
                       // Password TextField
                       TextField(
                         controller: _passController,

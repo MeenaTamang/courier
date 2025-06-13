@@ -1,6 +1,7 @@
 import 'package:courier/app/core/theme/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:pull_to_refresh/pull_to_refresh.dart';
 
 import 'signup_second.dart';
 
@@ -27,8 +28,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final _contactFocus = FocusNode();
   final _addressFocus = FocusNode();
 
+  final RefreshController _refreshController = RefreshController(initialRefresh: false);
+
+
   bool _isLoading = false;
-  
 
   // Regex patterns for validation
   static final RegExp _noNumbersRegex = RegExp(r'^[^0-9]*$');
@@ -113,22 +116,22 @@ class _SignUpScreenState extends State<SignUpScreen> {
     return null;
   }
 
-  @override
-  void dispose() {
-    _fullnameController.dispose();
-    _emailController.dispose();
-    _passwordController.dispose();
-    _contactNumberController.dispose();
-    _homeAddressController.dispose();
+  // @override
+  // void dispose() {
+  //   _fullnameController.dispose();
+  //   _emailController.dispose();
+  //   _passwordController.dispose();
+  //   _contactNumberController.dispose();
+  //   _homeAddressController.dispose();
 
-    _fullnameFocus.dispose();
-    _emailFocus.dispose();
-    _passwordFocus.dispose();
-    _contactFocus.dispose();
-    _addressFocus.dispose();
+  //   _fullnameFocus.dispose();
+  //   _emailFocus.dispose();
+  //   _passwordFocus.dispose();
+  //   _contactFocus.dispose();
+  //   _addressFocus.dispose();
 
-    super.dispose();
-  }
+  //   super.dispose();
+  // }
 
   Future<void> _registerUser() async {
     setState(() {
@@ -162,280 +165,85 @@ class _SignUpScreenState extends State<SignUpScreen> {
     }
   }
 
+void _onRefresh() async {
+    setState(() {
+      _formKey.currentState?.reset();
+      _fullnameController.clear();
+      _emailController.clear();
+      _passwordController.clear();
+      _contactNumberController.clear();
+      _homeAddressController.clear();
+      _touchedFields.clear();
+    });
+
+    await Future.delayed(const Duration(milliseconds: 500));
+    _refreshController.refreshCompleted();
+  }
+
+  @override
+  void dispose() {
+    _fullnameController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _contactNumberController.dispose();
+    _homeAddressController.dispose();
+    _fullnameFocus.dispose();
+    _emailFocus.dispose();
+    _passwordFocus.dispose();
+    _contactFocus.dispose();
+    _addressFocus.dispose();
+    _refreshController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        width: double.infinity,
-        height: MediaQuery.of(context).size.height,
-        decoration: BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage("assets/images/firstLayer.jpg"),
-            alignment: Alignment.bottomCenter,
-            fit: BoxFit.cover,
-          ),
-        ),
-        
-        child:
-        SingleChildScrollView(
-          child: Container(
+      body: SmartRefresher(
+        controller: _refreshController,
+        onRefresh: _onRefresh,
+        child: Container(
           width: double.infinity,
-            height: MediaQuery.of(context).size.height,
-            decoration: BoxDecoration(
-              image:DecorationImage(
-                image:AssetImage("assets/images/secondLayer.png"),
-                alignment: Alignment.bottomCenter,
-                fit: BoxFit.cover
-              ),
+          height: MediaQuery.of(context).size.height,
+          decoration: const BoxDecoration(
+            image: DecorationImage(
+              image: AssetImage("assets/images/firstLayer.jpg"),
+              alignment: Alignment.bottomCenter,
+              fit: BoxFit.cover,
             ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(
-                height: 200,
+          ),
+          child: SingleChildScrollView(
+            child: Container(
+              width: double.infinity,
+              height: MediaQuery.of(context).size.height,
+              decoration: const BoxDecoration(
+                image: DecorationImage(
+                  image: AssetImage("assets/images/secondLayer.png"),
+                  alignment: Alignment.bottomCenter,
+                  fit: BoxFit.cover,
+                ),
               ),
-              Padding(
+              child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 50),
                 child: Form(
                   key: _formKey,
                   autovalidateMode: AutovalidateMode.onUserInteraction,
                   child: Column(
-                    textDirection: TextDirection.ltr,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Personal Detail',
-                        style: TextStyle(
-                          color: Color.fromARGB(255, 0, 0, 0),
-                          fontSize: 27,
-                          fontFamily: 'Poppins',
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
+                      const SizedBox(height: 200),
+                      const Text('Personal Detail', style: TextStyle(fontSize: 27, fontWeight: FontWeight.w500)),
                       const SizedBox(height: 25),
-
-                      // Full Name
-                      TextFormField(
-                        controller: _fullnameController,
-                        focusNode: _fullnameFocus,
-                        validator: validateFullName,
-                        inputFormatters: [FilteringTextInputFormatter.allow(_noNumbersRegex)],
-                        textAlign: TextAlign.left,
-                        style: const TextStyle(
-                          color: Color.fromARGB(255, 0, 0, 0),
-                          fontSize: 13,
-                          fontFamily: 'Poppins',
-                          fontWeight: FontWeight.w400,
-                        ),
-                        decoration: InputDecoration(
-                          prefixIcon: Icon(
-                            Icons.person_outlined,
-                            color: Color.fromARGB(255, 50, 50, 51),
-                          ),
-                          labelText: 'Full Name',
-                          labelStyle: TextStyle(
-                            color: Color.fromARGB(255, 0, 0, 0),
-                            fontSize: 15,
-                            fontFamily: 'Poppins',
-                            fontWeight: FontWeight.w500,
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.all(Radius.circular(10)),
-                            borderSide: BorderSide(
-                              width: 1,
-                              color: Color.fromARGB(255, 50, 50, 51),
-                            ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.all(Radius.circular(10)),
-                            borderSide: BorderSide(
-                              width: 1,
-                              color: Color.fromARGB(255, 50, 50, 51),
-                            ),
-                          ),
-                        ),
-                      ),
-
-
+                      _buildTextField('Full Name', Icons.person_outlined, _fullnameController, _fullnameFocus, validateFullName, inputFormatters: [FilteringTextInputFormatter.allow(_noNumbersRegex)]),
                       const SizedBox(height: 16),
-
-                      // Email
-                      TextFormField(
-                        controller: _emailController,
-                        focusNode: _emailFocus,
-                        validator: validateEmail,
-                        textAlign: TextAlign.left,
-                        style: const TextStyle(
-                          color: Color.fromARGB(255, 0, 0, 0),
-                          fontSize: 13,
-                          fontFamily: 'Poppins',
-                          fontWeight: FontWeight.w400,
-                        ),
-                        decoration: const InputDecoration(
-                          prefixIcon: Icon(
-                            Icons.email_outlined,
-                            color: Color.fromARGB(255, 50, 50, 51),
-                          ),
-                          labelText: 'Email',
-                          labelStyle: TextStyle(
-                            color: Color.fromARGB(255, 0, 0, 0),
-                            fontSize: 15,
-                            fontFamily: 'Poppins',
-                            fontWeight: FontWeight.w500,
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.all(Radius.circular(10)),
-                            borderSide: BorderSide(
-                              width: 1,
-                              color: Color.fromARGB(255, 50, 50, 51),
-                            ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.all(Radius.circular(10)),
-                            borderSide: BorderSide(
-                              width: 1,
-                              color: Color.fromARGB(255, 50, 50, 51),
-                            ),
-                          ),
-                        ),
-                      ),
-
+                      _buildTextField('Email', Icons.email_outlined, _emailController, _emailFocus, validateEmail),
                       const SizedBox(height: 16),
-
-                      // Password
-                      TextFormField(
-                        controller: _passwordController,
-                        focusNode: _passwordFocus,
-                        obscureText: true,
-                        validator: validatePassword,
-                        textAlign: TextAlign.left,
-                        style: const TextStyle(
-                          color: Color.fromARGB(255, 0, 0, 0),
-                          fontSize: 13,
-                          fontFamily: 'Poppins',
-                          fontWeight: FontWeight.w400,
-                        ),
-                        decoration: const InputDecoration(
-                          prefixIcon: Icon(
-                            Icons.lock_outline_rounded,
-                            color: Color.fromARGB(255, 50, 50, 51),
-                          ),
-                          labelText: 'Password',
-                          labelStyle: TextStyle(
-                            color: Color.fromARGB(255, 0, 0, 0),
-                            fontSize: 15,
-                            fontFamily: 'Poppins',
-                            fontWeight: FontWeight.w500,
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.all(Radius.circular(10)),
-                            borderSide: BorderSide(
-                              width: 1,
-                              color: Color.fromARGB(255, 50, 50, 51),
-                            ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.all(Radius.circular(10)),
-                            borderSide: BorderSide(
-                              width: 1,
-                              color: Color.fromARGB(255, 50, 50, 51),
-                            ),
-                          ),
-                        ),
-                      ),
-
+                      _buildTextField('Password', Icons.lock_outline_rounded, _passwordController, _passwordFocus, validatePassword, obscureText: true),
                       const SizedBox(height: 16),
-
-                      // Contact Number
-                      TextFormField(
-                        controller: _contactNumberController,
-                        focusNode: _contactFocus,
-                        keyboardType: TextInputType.phone,
-                        validator: validatePhoneNumber,
-                        textAlign: TextAlign.left,
-                        style: const TextStyle(
-                          color: Color.fromARGB(255, 0, 0, 0),
-                          fontSize: 13,
-                          fontFamily: 'Poppins',
-                          fontWeight: FontWeight.w400,
-                        ),
-                        decoration: const InputDecoration(
-                          prefixIcon: Icon(
-                            Icons.phone_outlined,
-                            color: Color.fromARGB(255, 50, 50, 51),
-                          ),
-                          labelText: 'Contact Number',
-                          labelStyle: TextStyle(
-                            color: Color.fromARGB(255, 0, 0, 0),
-                            fontSize: 15,
-                            fontFamily: 'Poppins',
-                            fontWeight: FontWeight.w500,
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.all(Radius.circular(10)),
-                            borderSide: BorderSide(
-                              width: 1,
-                              color: Color.fromARGB(255, 50, 50, 51),
-                            ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.all(Radius.circular(10)),
-                            borderSide: BorderSide(
-                              width: 1,
-                              color: Color.fromARGB(255, 50, 50, 51),
-                            ),
-                          ),
-                        ),
-                      ),
-
+                      _buildTextField('Contact Number', Icons.phone_outlined, _contactNumberController, _contactFocus, validatePhoneNumber, keyboardType: TextInputType.phone),
                       const SizedBox(height: 16),
-
-                      // Home Address
-                      TextFormField(
-                        controller: _homeAddressController,
-                        focusNode: _addressFocus,
-                        validator: validateHomeAddress,
-                        textAlign: TextAlign.left,
-                        style: const TextStyle(
-                          color: Color.fromARGB(255, 0, 0, 0),
-                          fontSize: 13,
-                          fontFamily: 'Poppins',
-                          fontWeight: FontWeight.w400,
-                        ),
-                        decoration: const InputDecoration(
-                          prefixIcon: Icon(
-                            Icons.location_on_outlined,
-                            color: Color.fromARGB(255, 50, 50, 51),
-                          ),
-                          labelText: 'Home Address',
-                          labelStyle: TextStyle(
-                            color: Color.fromARGB(255, 0, 0, 0),
-                            fontSize: 15,
-                            fontFamily: 'Poppins',
-                            fontWeight: FontWeight.w500,
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.all(Radius.circular(10)),
-                            borderSide: BorderSide(
-                              width: 1,
-                              color: Color.fromARGB(255, 50, 50, 51),
-                            ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.all(Radius.circular(10)),
-                            borderSide: BorderSide(
-                              width: 1,
-                              color: Color.fromARGB(255, 50, 50, 51),
-                            ),
-                          ),
-                        ),
-                      ),
-
-
+                      _buildTextField('Home Address', Icons.location_on_outlined, _homeAddressController, _addressFocus, validateHomeAddress),
                       const SizedBox(height: 25),
-
-                      // Next Button
                       ClipRRect(
                         borderRadius: const BorderRadius.all(Radius.circular(5)),
                         child: SizedBox(
@@ -448,52 +256,18 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             ),
                             child: _isLoading
                                 ? const CircularProgressIndicator(color: Colors.white)
-                                : const Text(
-                                    'Next',
-                                    style: TextStyle(
-                                      color: Color.fromARGB(255, 0, 0, 0),
-                                      fontSize: 15,
-                                      fontFamily: 'Poppins',
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
+                                : const Text('Next', style: TextStyle(fontSize: 15)),
                           ),
                         ),
                       ),
-
                       const SizedBox(height: 15),
-
-                      // Already have an account?
                       Row(
                         children: [
-                          const Text(
-                            ' have an account?',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: Color.fromARGB(255, 50, 50, 51),
-                              fontSize: 13,
-                              fontFamily: 'Poppins',
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
+                          const Text(' have an account?', style: TextStyle(fontSize: 13)),
                           const SizedBox(width: 2.5),
                           InkWell(
-                            onTap: () {
-                              widget.controller.animateToPage(
-                                0,
-                                duration: const Duration(milliseconds: 500),
-                                curve: Curves.ease,
-                              );
-                            },
-                            child: const Text(
-                              'Log In ',
-                              style: TextStyle(
-                                color: Color.fromARGB(255, 80, 128, 219),
-                                fontSize: 13,
-                                fontFamily: 'Poppins',
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
+                            onTap: () => widget.controller.animateToPage(0, duration: const Duration(milliseconds: 500), curve: Curves.ease),
+                            child: const Text('Log In', style: TextStyle(color: Color.fromARGB(255, 80, 128, 219), fontSize: 13)),
                           ),
                         ],
                       ),
@@ -501,10 +275,43 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   ),
                 ),
               ),
-            ],
+            ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildTextField(
+    String label,
+    IconData icon,
+    TextEditingController controller,
+    FocusNode focusNode,
+    String? Function(String?) validator, {
+    bool obscureText = false,
+    List<TextInputFormatter>? inputFormatters,
+    TextInputType? keyboardType,
+  }) {
+    return TextFormField(
+      controller: controller,
+      focusNode: focusNode,
+      validator: validator,
+      obscureText: obscureText,
+      inputFormatters: inputFormatters,
+      keyboardType: keyboardType,
+      style: const TextStyle(fontSize: 13),
+      decoration: InputDecoration(
+        prefixIcon: Icon(icon, color: const Color.fromARGB(255, 50, 50, 51)),
+        labelText: label,
+        labelStyle: const TextStyle(fontSize: 15),
+        enabledBorder: const OutlineInputBorder(
+          borderRadius: BorderRadius.all(Radius.circular(10)),
+          borderSide: BorderSide(width: 1, color: Color.fromARGB(255, 50, 50, 51)),
+        ),
+        focusedBorder: const OutlineInputBorder(
+          borderRadius: BorderRadius.all(Radius.circular(10)),
+          borderSide: BorderSide(width: 1, color: Color.fromARGB(255, 50, 50, 51)),
+        ),
       ),
     );
   }

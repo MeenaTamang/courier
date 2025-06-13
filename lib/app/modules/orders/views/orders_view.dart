@@ -3,6 +3,9 @@ import 'dart:convert';
 import 'package:courier/app/core/theme/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:jwt_decoder/jwt_decoder.dart';
+import 'package:pull_to_refresh/pull_to_refresh.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class OrdersView extends StatefulWidget {
   const OrdersView({super.key});
@@ -14,6 +17,7 @@ class OrdersView extends StatefulWidget {
 class _OrdersViewState extends State<OrdersView> {
   bool isLoading = true;
   List<Order> orders = [];
+  final RefreshController _refreshController = RefreshController(initialRefresh: false);
 
   @override
   void initState() {
@@ -21,35 +25,97 @@ class _OrdersViewState extends State<OrdersView> {
     fetchOrders();
   }
 
-Future<void> fetchOrders() async {
-  const String url = 'http://192.168.49.16:5183/api/order/pendingorders';
-  try {
-    final response = await http.get(Uri.parse(url));
-    print('status code is ${response.statusCode}');
-    print('response is ${response.body}');
+  Future<void> fetchOrders({bool isRefresh = false}) async {
+    const String url = 'http://192.168.49.195:5183/api/order/pendingorders';
+    try {
+      final response = await http.get(Uri.parse(url));
+      print('status code is ${response.statusCode}');
+      print('response is ${response.body}');
 
-    // if (response.statusCode == 200) {
       final Map<String, dynamic> jsonResponse = json.decode(response.body);
-      print('response ${jsonResponse}');
-
-      final List<dynamic> data = jsonResponse['data']; // <-- Correct key here
-
-      print('json array ${data}');
+      final List<dynamic> data = jsonResponse['data'];
 
       setState(() {
         orders = data.map((json) => Order.fromJson(json)).toList();
         isLoading = false;
       });
-    // } else {
-      // throw Exception('Failed to load orders');
-    // }
-  } catch (e) {
-    setState(() => isLoading = false);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Error fetching orders: $e')),
-    );
+
+      if (isRefresh) {
+        _refreshController.refreshCompleted();
+      }
+    } catch (e) {
+      if (isRefresh) {
+        _refreshController.refreshFailed();
+      }
+      setState(() => isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error fetching orders: $e')),
+      );
+    }
   }
-}
+
+  Future<void> confirmOrders({
+    required int workerId,
+    required int workerOrderId,
+    required List orderId,
+  }) async {
+    const String url = 'http://192.168.49.195:5183/api/order/saveselectedorders';
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+
+      if (token == null || token.isEmpty) {
+        throw Exception('Missing token. Please log in again.');
+      }
+
+      final headers = {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      };
+
+      final body = {
+        "workerId": workerId,
+        "orderId": List<int>.from(orderId),
+      };
+
+      final response = await http.post(
+        Uri.parse(url),
+        headers: headers,
+        body: jsonEncode(body),
+      );
+
+      final Map<String, dynamic> jsonResponse = json.decode(response.body);
+      if (jsonResponse['success'] == true && jsonResponse['data'] is List) {
+        final List<dynamic> data = jsonResponse['data'];
+        setState(() {
+          orders = data.map((json) => Order.fromJson(json)).toList();
+          isLoading = false;
+        });
+      } else {
+        throw Exception(jsonResponse['message'] ?? 'Order confirmation failed');
+      }
+    } catch (e) {
+      setState(() => isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$e')),
+      );
+    }
+  }
+
+  Future<int?> getWorkerIdFromToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+    if (token == null || token.isEmpty) return null;
+
+    try {
+      final decoded = JwtDecoder.decode(token);
+      final workerIdStr = decoded['workerId'];
+      return int.tryParse(workerIdStr.toString());
+    } catch (e) {
+      print("Token decoding error: $e");
+      return null;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -59,134 +125,153 @@ Future<void> fetchOrders() async {
         title: const Text('Orders'),
         centerTitle: true,
       ),
-      body:
-        Stack(
-          children: [
-            // Background image layer
-            Container(
-              decoration: BoxDecoration(
-                image: DecorationImage(
-                  image: AssetImage('assets/images/firstLayer.jpg'),
-                  fit: BoxFit.cover,
-                ),
+      body: Stack(
+        children: [
+          Container(
+            decoration: const BoxDecoration(
+              image: DecorationImage(
+                image: AssetImage('assets/images/firstLayer.jpg'),
+                fit: BoxFit.cover,
               ),
             ),
+          ),
           isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : ListView.builder(
-              itemCount: orders.length,
-              padding: const EdgeInsets.only(bottom: 80),
-              itemBuilder: (context, index) {
-                final order = orders[index];
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 17.0, vertical: 8.0),
-                  child: Container(
-                    height: 120,
-                    decoration: BoxDecoration(
-                      color: MaterialTheme.blueColorScheme().secondaryContainer,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color.fromARGB(255, 46, 49, 116).withOpacity(0.3),
-                          spreadRadius: 2,
-                          blurRadius: 9,
-                          offset: const Offset(1, 2),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      children: [
-                        const Padding(
-                          padding: EdgeInsets.all(15),
-                          child: Icon(Icons.local_shipping_outlined, size: 50),
-                        ),
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 15.0),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    const Icon(Icons.location_on_outlined, size: 15),
-                                    const SizedBox(width: 4),
-                                    Expanded(
-                                      child: Text(order.deliveryAddress,
-                                          style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold)),
-                                    ),
-                                  ],
+              ? const Center(child: CircularProgressIndicator())
+              : SmartRefresher(
+                  controller: _refreshController,
+                  onRefresh: () => fetchOrders(isRefresh: true),
+                  child: ListView.builder(
+                    itemCount: orders.length,
+                    padding: const EdgeInsets.only(bottom: 80),
+                    itemBuilder: (context, index) {
+                      final order = orders[index];
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 17.0, vertical: 8.0),
+                        child: Container(
+                          height: 140,
+                          decoration: BoxDecoration(
+                            color: MaterialTheme.blueColorScheme().secondaryContainer,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color.fromARGB(255, 46, 49, 116).withOpacity(0.3),
+                                spreadRadius: 2,
+                                blurRadius: 9,
+                                offset: const Offset(1, 2),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            children: [
+                              const Padding(
+                                padding: EdgeInsets.all(15),
+                                child: Icon(Icons.local_shipping_outlined, size: 50),
+                              ),
+                              Expanded(
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 15.0),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          const Icon(Icons.location_on_outlined, size: 10),
+                                          const SizedBox(width: 2),
+                                          Expanded(
+                                            child: Text(order.deliveryAddress,
+                                                style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold)),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Row(
+                                        children: [
+                                          Text(order.trackingId, style: const TextStyle(fontSize: 11)),
+                                          const SizedBox(width: 10),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 3),
+                                      Text('~${order.distanceInKm} Km', style: const TextStyle(fontSize: 12)),
+                                      Text('Weight: ${order.weightInKg} Kg', style: const TextStyle(fontSize: 12)),
+                                      Text('Priority: ${order.urgencyLevel}', style: const TextStyle(fontSize: 12)),
+                                      Text('Price: ${order.wage}',
+                                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                                    ],
+                                  ),
                                 ),
-                                const SizedBox(height: 4),
-                                Row(
-                                  children: [
-                                    Text(order.trackingId, style: const TextStyle(fontSize: 11)),
-                                    const SizedBox(width: 10),
-                                    // Text(order.distanceInKm.toString(), style: const TextStyle(fontSize: 11)),
-
-                                  ],
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.all(15),
+                                child: Transform.scale(
+                                  scale: 2,
+                                  child: Checkbox(
+                                    value: order.isSelected,
+                                    onChanged: (bool? newValue) {
+                                      setState(() {
+                                        order.isSelected = newValue ?? false;
+                                      });
+                                    },
+                                  ),
                                 ),
-                                const SizedBox(height: 3),
-                                Text('~${order.distanceInKm} Km', style: const TextStyle(fontSize: 12)),
-                                Text('Weight: ${order.weightInKg} Kg', style: const TextStyle(fontSize: 12)),
-                                Text('Priority: ${order.urgencyLevel}', style: const TextStyle(fontSize: 12)),
-                                Text('Price: ${order.wage}',
-                                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                         ),
-                        Padding(
-                          padding: const EdgeInsets.all(20),
-                          child: Transform.scale(
-                            scale: 2,
-                            child: Checkbox(
-                              value: order.isSelected,
-                              onChanged: (bool? newValue) {
-                                setState(() {
-                                  order.isSelected = newValue ?? false;
-                                });
-                              },
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                      );
+                    },
                   ),
+                ),
+          Positioned(
+            bottom: 30,
+            left: 220,
+            right: 20,
+            child: ElevatedButton(
+              onPressed: () async {
+                SharedPreferences prefs = await SharedPreferences.getInstance();
+                int workerId = prefs.getInt('workerId') ?? 0;
+
+                List<int> selectedOrderIds = orders
+                    .where((order) => order.isSelected)
+                    .map((order) => int.tryParse(order.trackingId.split('-').first) ?? 0)
+                    .toList();
+
+                if (selectedOrderIds.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Please select at least one order.')),
+                  );
+                  return;
+                }
+
+                await confirmOrders(
+                  workerId: workerId,
+                  workerOrderId: 0,
+                  orderId: selectedOrderIds,
                 );
               },
-            ),
-            Positioned(
-              bottom: 30,
-              left: 290,
-              right: 20,
-              child: ElevatedButton(
-                onPressed: () {
-                  // Add your button action here
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: MaterialTheme.blueColorScheme().onSecondaryContainer,
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 15),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: MaterialTheme.blueColorScheme().onSecondaryContainer,
+                padding: const EdgeInsets.symmetric( vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Text('Confirm',
-                  style: TextStyle(
-                    color: Colors.black,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
+              ),
+              child: const Text(
+                'Confirm',
+                style: TextStyle(
+                  color: Colors.black,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ),
-      ],
-            ),
+          ),
+        ],
+      ),
     );
   }
 }
 
-// Standalone Order model
 class Order {
   final String deliveryAddress;
   final String trackingId;
@@ -210,10 +295,10 @@ class Order {
     return Order(
       trackingId: json['trackingId'] ?? '',
       deliveryAddress: json['deliveryAddress'] ?? '',
-      distanceInKm: json['distanceInKm'] ?? 0,
-      weightInKg: json['weightInKg'] ?? 0.0,
-      urgencyLevel: (json['urgencyLevel'] ?? ''),
-      wage: json['wage'] ?? 0.0,
+      distanceInKm: (json['distanceInKm'] ?? 0).toDouble(),
+      weightInKg: (json['weightInKg'] ?? 0).toDouble(),
+      urgencyLevel: json['urgencyLevel'] ?? '',
+      wage: (json['wage'] ?? 0).toDouble(),
     );
   }
 }

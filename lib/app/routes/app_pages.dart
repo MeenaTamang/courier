@@ -3,6 +3,8 @@ import 'package:get/get.dart';
 
 import '../modules/Documents/bindings/documents_binding.dart';
 import '../modules/Documents/views/documents_view.dart';
+import '../modules/Earnings/bindings/earnings_binding.dart';
+import '../modules/Earnings/views/earnings_view.dart';
 import '../modules/History/bindings/history_binding.dart';
 import '../modules/History/views/history_view.dart';
 import '../modules/Profile/bindings/profile_binding.dart';
@@ -21,13 +23,11 @@ import '../modules/home/bindings/home_binding.dart';
 import '../modules/home/views/home_view.dart';
 import '../modules/orders/bindings/orders_binding.dart';
 import '../modules/orders/views/orders_view.dart';
-
-// import '../modules/authentication/bindings/authentication_binding.dart';
-// import '../modules/authentication/views/authentication_view.dart';
-// import '../modules/authentication/views/login_screen.dart';
-// import '../modules/authentication/views/signup_screen.dart';
+import '../modules/splash/bindings/splash_binding.dart';
+import '../modules/splash/views/splash_view.dart';
 
 part 'app_routes.dart';
+
 
 class AppPages {
   AppPages._();
@@ -39,6 +39,9 @@ class AppPages {
       name: _Paths.HOME,
       page: () => const HomeView(),
       binding: HomeBinding(),
+      // middlewares: [
+      //   AuthMiddleware(), // Add middleware to check authentication
+      // ],
     ),
     GetPage(
       name: _Paths.AUTHENTICATION,
@@ -61,7 +64,7 @@ class AppPages {
     ),
     GetPage(
       name: _Paths.BOTTOM_NAV_BAR,
-      page: () => BottomNavBarView(userId: Get.arguments as String),
+      page: () => BottomNavBarView(),
       binding: BottomNavBarBinding(),
     ),
     GetPage(
@@ -76,7 +79,7 @@ class AppPages {
     ),
     GetPage(
       name: _Paths.PROFILE,
-      page: () => ProfileView(userId: Get.arguments as String),
+      page: () => ProfileView(),
       binding: ProfileBinding(),
     ),
     // GetPage(
@@ -86,13 +89,23 @@ class AppPages {
     // ),
     GetPage(
       name: _Paths.DOCUMENTS,
-      page: () => const DocumentsView(),
+      page: () => DocumentsView(),
       binding: DocumentsBinding(),
     ),
     GetPage(
       name: _Paths.PROFILE_DETAILS,
       page: () => const ProfileDetailsView(),
       binding: ProfileDetailsBinding(),
+    ),
+    GetPage(
+      name: _Paths.SPLASH,
+      page: () => const SplashView(),
+      binding: SplashBinding(),
+    ),
+    GetPage(
+      name: _Paths.EARNINGS,
+      page: () => EarningsView(),
+      binding: EarningsBinding(),
     ),
   ];
 }

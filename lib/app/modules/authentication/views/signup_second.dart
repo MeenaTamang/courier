@@ -1,8 +1,13 @@
-import 'dart:convert';
+import 'dart:io' as io;
+import 'dart:typed_data';
 
 import 'package:courier/app/core/theme/theme.dart';
+import 'package:courier/app/modules/authentication/views/authentication_view.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
+import 'package:pull_to_refresh/pull_to_refresh.dart';
+
 
 
 class SignUpSecond extends StatefulWidget {
@@ -11,11 +16,7 @@ class SignUpSecond extends StatefulWidget {
   final String password;
   final String contactNumber;
   final String homeAddress;
-  // final PageController pageController;
-
-
   final PageController controller;
-  // final String userId;
 
   const SignUpSecond({
     required this.fullName,
@@ -23,10 +24,9 @@ class SignUpSecond extends StatefulWidget {
     required this.password,
     required this.contactNumber,
     required this.homeAddress,
-    // required this.pageController,
     required this.controller,
   });
-  
+
   @override
   State<SignUpSecond> createState() => _SignUpSecondState();
 }
@@ -36,62 +36,110 @@ class _SignUpSecondState extends State<SignUpSecond> {
   final TextEditingController _licenseNumberController = TextEditingController();
   final TextEditingController _nationalIDNumberController = TextEditingController();
 
+  Uint8List? _vehicleImageBytes;
+  Uint8List? _licenseImageBytes;
+  Uint8List? _nationalIdImageBytes;
+  Uint8List? _profileImageBytes;
+  
+  String? _vehicleImageName;
+  String? _licenseImageName;
+  String? _nationalIdImageName;
+  String? _profileImageName;
+
+  final RefreshController _refreshController = RefreshController(initialRefresh: false);
   bool _isLoading = false;
 
-  @override
-  void dispose() {
-    // Clean up all TextEditingControllers
-    _vehicleNumberController.dispose();
-    _licenseNumberController.dispose();
-    _nationalIDNumberController.dispose();
-    
-    super.dispose();
+  Future<void> _pickImage(String type) async {
+    final picker = ImagePicker();
+    final XFile? pickedFile = await picker.pickImage(source: ImageSource.gallery);
+    if (pickedFile == null) return;
+
+    final file = io.File(pickedFile.path);
+    final bytes = await file.readAsBytes();
+    final name = pickedFile.name;
+
+    setState(() {
+      if (type == 'vehicle') {
+        _vehicleImageBytes = bytes;
+        _vehicleImageName = name;
+      } else if (type == 'license') {
+        _licenseImageBytes = bytes;
+        _licenseImageName = name;
+      } else if (type == 'nationalId') {
+        _nationalIdImageBytes = bytes;
+        _nationalIdImageName = name;
+      }else if (type == 'profile') {
+      _profileImageBytes = bytes;
+      _profileImageName = name;
+    }
+    });
   }
 
-  bool _validateForm() {
+  Future<void> _registerUser() async {
     if (_vehicleNumberController.text.isEmpty ||
         _licenseNumberController.text.isEmpty ||
-        _nationalIDNumberController.text.isEmpty) {
+        _nationalIDNumberController.text.isEmpty ||
+        _vehicleImageBytes == null ||
+        _licenseImageBytes == null ||
+        _nationalIdImageBytes == null||
+        _profileImageBytes == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please fill in all fields"))
+        const SnackBar(content: Text("Please fill all fields and upload images.")),
       );
-      return false;
+      return;
     }
-    return true;
-  }
-
-
-    Future<void> _registerUser() async {
-    if (!_validateForm()) return;
 
     setState(() => _isLoading = true);
+
     try {
-      final response = await http.post(
-        Uri.parse('http://192.168.49.16:5183/api/registration/create'),
-        headers: {
-          "Content-Type": "application/json"},
-        body: jsonEncode({
-          "fullName": widget.fullName,
-          "email": widget.email,
-          "password": widget.password,
-          "contactNumber": widget.contactNumber,
-          "homeAddress": widget.homeAddress,
-          "vehicleRegistrationNumber": _vehicleNumberController.text.trim(),
-          "licenseNumber": _licenseNumberController.text.trim(),
-          "nationalIdNumber": _nationalIDNumberController.text.trim(),
-        }),
-      );
+      var uri = Uri.parse("http://192.168.49.195:5183/api/registration/create");
+      var request = http.MultipartRequest("POST", uri);
 
-      if (response.body.isEmpty) throw Exception("Empty response from server");
+      request.fields['FullName'] = widget.fullName;
+      request.fields['Email'] = widget.email;
+      request.fields['Password'] = widget.password;
+      request.fields['ContactNumber'] = widget.contactNumber;
+      request.fields['HomeAddress'] = widget.homeAddress;
+      request.fields['VehicleRegistrationNumber'] = _vehicleNumberController.text;
+      request.fields['LicenseNumber'] = _licenseNumberController.text;
+      request.fields['NationalIdNumber'] = _nationalIDNumberController.text;
 
-      final data = jsonDecode(response.body);
-      if (data["success"] == true) {
+      request.files.add(http.MultipartFile.fromBytes(
+        'VehicleRegistrationNumberImage',
+        _vehicleImageBytes!,
+        filename: _vehicleImageName ?? 'vehicle.jpg',
+      ));
+      request.files.add(http.MultipartFile.fromBytes(
+        'LicenseNumberImage',
+        _licenseImageBytes!,
+        filename: _licenseImageName ?? 'license.jpg',
+      ));
+      request.files.add(http.MultipartFile.fromBytes(
+        'NationalIdNumberImage',
+        _nationalIdImageBytes!,
+        filename: _nationalIdImageName ?? 'national_id.jpg',
+      ));
+      // Add profile image file
+      request.files.add(http.MultipartFile.fromBytes(
+        'ProfileImage',
+        _profileImageBytes!,
+        filename: _profileImageName ?? 'profile.jpg',
+      ));
+
+      var response = await request.send();
+
+      if (response.statusCode == 200) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Registration Complete!")),
+          const SnackBar(content: Text("Registration successful")),
         );
-        Navigator.pop(context);
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => AuthenticationView()),
+          (route) => false,
+        );
       } else {
-        throw Exception(data["message"] ?? "Registration failed");
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Failed: ${response.statusCode}")),
+        );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -102,258 +150,199 @@ class _SignUpSecondState extends State<SignUpSecond> {
     }
   }
 
+  void _onRefresh() async {
+    setState(() {
+      _vehicleNumberController.clear();
+      _licenseNumberController.clear();
+      _nationalIDNumberController.clear();
+      _vehicleImageBytes = null;
+      _licenseImageBytes = null;
+      _nationalIdImageBytes = null;
+      _vehicleImageName = null;
+      _licenseImageName = null;
+      _nationalIdImageName = null;
+      _profileImageBytes = null;
+      _profileImageName = null;
+
+    });
+
+    await Future.delayed(const Duration(milliseconds: 500));
+    _refreshController.refreshCompleted();
+  }
+
+  @override
+  void dispose() {
+    _vehicleNumberController.dispose();
+    _licenseNumberController.dispose();
+    _nationalIDNumberController.dispose();
+    _refreshController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        width: double.infinity,
+      body: SmartRefresher(
+        controller: _refreshController,
+        onRefresh: _onRefresh,
+        child: Container(
+          width: double.infinity,
           height: MediaQuery.of(context).size.height,
-          decoration: BoxDecoration(
-              image:DecorationImage(image:AssetImage("assets/images/logsign.jpg"),
+          decoration: const BoxDecoration(
+            image: DecorationImage(
+              image: AssetImage("assets/images/logsign.jpg"),
               alignment: Alignment.bottomCenter,
-              fit: BoxFit.cover
+              fit: BoxFit.cover,
+            ),
+          ),
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 50),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 200),
+                  const Text(
+                    'Identification Document',
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontSize: 23,
+                      fontFamily: 'Poppins',
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 50),
+
+                  _buildInputRow(
+                    controller: _vehicleNumberController,
+                    label: 'Vehicle Registration Number',
+                    onUpload: () => _pickImage('vehicle'),
+                    showCheck: _vehicleImageBytes != null,
+                  ),
+                  const SizedBox(height: 25),
+
+                  _buildInputRow(
+                    controller: _licenseNumberController,
+                    label: 'License Number',
+                    onUpload: () => _pickImage('license'),
+                    showCheck: _licenseImageBytes != null,
+                  ),
+                  const SizedBox(height: 25),
+
+                  _buildInputRow(
+                    controller: _nationalIDNumberController,
+                    label: 'National ID Number',
+                    onUpload: () => _pickImage('nationalId'),
+                    showCheck: _nationalIdImageBytes != null,
+                  ),
+                  const SizedBox(height: 25),
+
+                  // New Profile Image Upload Section
+                  const Text(
+                    'Profile Image',
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      ElevatedButton.icon(
+                        onPressed: () => _pickImage('profile'),
+                        icon: const Icon(Icons.upload),
+                        label: const Text('Upload Profile Image'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: MaterialTheme.blueColorScheme().onSecondaryContainer,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      if (_profileImageBytes != null)
+                        const Icon(Icons.check_circle, color: Colors.green),
+                    ],
+                  ),
+
+                  const SizedBox(height: 25),
+
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(5),
+                    child: SizedBox(
+                      width: 300,
+                      height: 56,
+                      child: ElevatedButton(
+                        onPressed: _isLoading ? null : _registerUser,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: MaterialTheme.blueColorScheme().onSecondaryContainer,
+                        ),
+                        child: _isLoading
+                            ? const CircularProgressIndicator(color: Colors.white)
+                            : const Text(
+                                'Create account',
+                                style: TextStyle(
+                                  color: Colors.black,
+                                  fontSize: 15,
+                                  fontFamily: 'Poppins',
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 15),
+                ],
               ),
             ),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Padding(
-              //   padding: const EdgeInsets.only(left: 15, top: 15),
-              //   child: Image.asset(
-              //     "assets/images/car1.png",
-              //       width: 270,
-              //       height: 275,
-              //   ),
-              // ),
-          
-              // const SizedBox(
-              //   height: 18,
-              // ),
-              const SizedBox(
-                height: 200,
-              ),
-
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 50),
-                child: Column(
-                  textDirection: TextDirection.ltr,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Identification Document',
-                      style: TextStyle(
-                        color: Color.fromARGB(255, 0, 0, 0),
-                        fontSize: 23,
-                        fontFamily: 'Poppins',
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(
-                      height: 50,
-                    ),
-          
-                    //Vehicle Number
-                    SizedBox(
-                      height: 40,
-                      child: TextField(
-                        controller: _vehicleNumberController,
-                        textAlign: TextAlign.left,
-                        style: const TextStyle(
-                          color: Color.fromARGB(255, 0, 0, 0),
-                          fontSize: 13,
-                          fontFamily: 'Poppins',
-                          fontWeight: FontWeight.w400,
-                        ),
-                        decoration: const InputDecoration(
-                          labelText: 'Vehicle Registration Number',
-                          labelStyle: TextStyle(
-                            color: Color.fromARGB(255, 0, 0, 0),
-                            fontSize: 15,
-                            fontFamily: 'Poppins',
-                            fontWeight: FontWeight.w500,
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.all(Radius.circular(10)),
-                            borderSide: BorderSide(
-                              width: 1,
-                              color: Color.fromARGB(255, 50, 50, 51),
-                            ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.all(Radius.circular(10)),
-                            borderSide: BorderSide(
-                              width: 1,
-                              color: Color.fromARGB(255, 50, 50, 51),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                
-                  const SizedBox(
-                      height: 25,
-                    ),
-                
-                    //license number
-                    SizedBox(
-                      height: 40,
-                      child: TextField(
-                        controller: _licenseNumberController,
-                        textAlign: TextAlign.left,
-                        style: const TextStyle(
-                          color: Color.fromARGB(255, 0, 0, 0),
-                          fontSize: 13,
-                          fontFamily: 'Poppins',
-                          fontWeight: FontWeight.w400,
-                        ),
-                        decoration: const InputDecoration(
-                          labelText: 'License Number',
-                          labelStyle: TextStyle(
-                            color: Color.fromARGB(255, 0, 0, 0),
-                            fontSize: 15,
-                            fontFamily: 'Poppins',
-                            fontWeight: FontWeight.w500,
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.all(Radius.circular(10)),
-                            borderSide: BorderSide(
-                              width: 1,
-                              color: Color.fromARGB(255, 50, 50, 51),
-                            ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.all(Radius.circular(10)),
-                            borderSide: BorderSide(
-                              width: 1,
-                              color: Color.fromARGB(255, 50, 50, 51),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-          
-                    const SizedBox(
-                      height: 25,
-                    ),
-                    
-                
-                    //National ID Number
-                    SizedBox(
-                      height: 40,
-                      child: TextField(
-                            controller: _nationalIDNumberController,
-                            textAlign: TextAlign.left,
-                            style: const TextStyle(
-                              color: Color.fromARGB(255, 0, 0, 0),
-                              fontSize: 13,
-                              fontFamily: 'Poppins',
-                              fontWeight: FontWeight.w400,
-                            ),
-                            decoration: const InputDecoration(
-                              labelText: 'National ID Number',
-                              labelStyle: TextStyle(
-                                color: Color.fromARGB(255, 0, 0, 0),
-                                fontSize: 15,
-                                fontFamily: 'Poppins',
-                                fontWeight: FontWeight.w500,
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.all(Radius.circular(10)),
-                                borderSide: BorderSide(
-                                  width: 1,
-                                  color: Color.fromARGB(255, 50, 50, 51),
-                                ),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.all(Radius.circular(10)),
-                                borderSide: BorderSide(
-                                  width: 1,
-                                  color: Color.fromARGB(255, 50, 50, 51),
-                                ),
-                              ),
-                            ),
-                          ),
-                    ),
-                
-                    const SizedBox(
-                      height: 25,
-                    ),
-                
-                    //Create Account Button
-                    ClipRRect(
-                      borderRadius: const BorderRadius.all(Radius.circular(5)),
-                      child: SizedBox(
-                        width: 300,
-                        height: 56,
-                        child: ElevatedButton(
-                          onPressed: _isLoading
-                              ? null
-                              : _registerUser,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: MaterialTheme.blueColorScheme().onSecondaryContainer,
-                          ),
-                          child: _isLoading
-                              ? const CircularProgressIndicator(color: Colors.white)
-                              : const Text(
-                                  'Create account',
-                                  style: TextStyle(
-                                    color: Color.fromARGB(255, 0, 0, 0),
-                                    fontSize: 15,
-                                    fontFamily: 'Poppins',
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                        ),
-                      ),
-                    ),
-                
-                    const SizedBox(
-                      height: 15,
-                    ),
-                
-                    //Already have an account
-                    // Row(
-                    //   children: [
-                    //     const Text(
-                    //       ' have an account?',
-                    //       textAlign: TextAlign.center,
-                    //       style: TextStyle(
-                    //         color: Color.fromARGB(255, 50, 50, 51),
-                    //         fontSize: 13,
-                    //         fontFamily: 'Poppins',
-                    //         fontWeight: FontWeight.w500,
-                    //       ),
-                    //     ),
-                    //     const SizedBox(
-                    //       width: 2.5,
-                    //     ),
-                    //     InkWell(
-                    //       onTap: () {
-                    //         widget.controller.animateToPage(0,
-                    //             duration: const Duration(milliseconds: 500),
-                    //             curve: Curves.ease);
-                    //       },
-                    //       child: const Text(
-                    //         'Log In ',
-                    //         style: TextStyle(
-                    //           color: Color.fromARGB(255, 80, 128, 219),
-                    //           fontSize: 13,
-                    //           fontFamily: 'Poppins',
-                    //           fontWeight: FontWeight.w500,
-                    //         ),
-                    //       ),
-                    //     ),
-                    //   ],
-                    // ),
-                  ],
-                ),
-              ),
-            ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildInputRow({
+    required TextEditingController controller,
+    required String label,
+    required VoidCallback onUpload,
+    required bool showCheck,
+  }) {
+    return Row(
+      children: [
+        Expanded(
+          flex: 2,
+          child: SizedBox(
+            height: 40,
+            child: TextField(
+              controller: controller,
+              style: const TextStyle(
+                color: Colors.black,
+                fontSize: 13,
+                fontFamily: 'Poppins',
+                fontWeight: FontWeight.w400,
+              ),
+              decoration: InputDecoration(
+                labelText: label,
+                labelStyle: const TextStyle(
+                  color: Colors.black,
+                  fontSize: 15,
+                  fontFamily: 'Poppins',
+                  fontWeight: FontWeight.w500,
+                ),
+                enabledBorder: const OutlineInputBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(10)),
+                  borderSide: BorderSide(width: 1, color: Color.fromARGB(255, 50, 50, 51)),
+                ),
+                focusedBorder: const OutlineInputBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(10)),
+                  borderSide: BorderSide(width: 1, color: Color.fromARGB(255, 50, 50, 51)),
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        IconButton(icon: const Icon(Icons.upload), onPressed: onUpload),
+        if (showCheck) const Icon(Icons.check_circle, color: Colors.green),
+      ],
     );
   }
 }

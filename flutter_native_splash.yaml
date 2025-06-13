@@ -1,5 +1,5 @@
 flutter_native_splash:
-  color: "#1560BD" # Light blue color
+  color: "#747FB6" # Light blue color
   image: assets/icons/splash.png
   # branding: assets/images/branding.png
   android: true

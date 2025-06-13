@@ -7,8 +7,8 @@ import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'package:flutter/material.dart';
 
 class BottomNavBarView extends StatefulWidget {
-  final String userId; 
-  const BottomNavBarView({super.key, required this.userId});
+  // final String userId;
+  const BottomNavBarView({super.key});
 
   @override
   _BottomNavBarViewState createState() => _BottomNavBarViewState();
@@ -27,7 +27,7 @@ class _BottomNavBarViewState extends State<BottomNavBarView> {
       OrdersView(),
       SelectedOrdersView(),
       HistoryView(),
-      ProfileView(userId: widget.userId), // Pass userId here
+      ProfileView(),
     ];
   }
 
