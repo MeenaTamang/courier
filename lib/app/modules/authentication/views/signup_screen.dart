@@ -116,23 +116,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
     return null;
   }
 
-  // @override
-  // void dispose() {
-  //   _fullnameController.dispose();
-  //   _emailController.dispose();
-  //   _passwordController.dispose();
-  //   _contactNumberController.dispose();
-  //   _homeAddressController.dispose();
-
-  //   _fullnameFocus.dispose();
-  //   _emailFocus.dispose();
-  //   _passwordFocus.dispose();
-  //   _contactFocus.dispose();
-  //   _addressFocus.dispose();
-
-  //   super.dispose();
-  // }
-
   Future<void> _registerUser() async {
     setState(() {
       _touchedFields.addAll(['fullname', 'email', 'password', 'contact', 'address']);
@@ -145,7 +128,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     try {
       Navigator.push(
         context,
-        MaterialPageRoute(
+        MaterialPageRoute( 
           builder: (context) => SignUpSecond(
             fullName: _fullnameController.text.trim(),
             email: _emailController.text.trim(),

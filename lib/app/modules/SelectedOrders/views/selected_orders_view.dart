@@ -25,7 +25,7 @@ class _SelectedOrdersViewState extends State<SelectedOrdersView> {
   }
 
   Future<void> fetchSelectedOrders({bool isRefresh = false}) async {
-    const String url = 'http://192.168.49.195:5183/api/order/inprogressorders';
+    const String url = 'http://192.168.60.166:5183/api/order/inprogressorders';
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token');
@@ -70,7 +70,7 @@ class _SelectedOrdersViewState extends State<SelectedOrdersView> {
     required int workerOrderId,
     required List orderId,
   }) async {
-    const String url = 'http://192.168.49.195:5183/api/order/savecompletedorders';
+    const String url = 'http://192.168.60.166:5183/api/order/savecompletedorders';
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token');
@@ -143,80 +143,84 @@ class _SelectedOrdersViewState extends State<SelectedOrdersView> {
                       final order = orders[index];
                       return Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 17.0, vertical: 8.0),
-                        child: Container(
-                          height: 140,
-                          decoration: BoxDecoration(
-                            color: MaterialTheme.blueColorScheme().secondaryContainer,
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color.fromARGB(255, 46, 49, 116).withOpacity(0.3),
-                                spreadRadius: 2,
-                                blurRadius: 9,
-                                offset: const Offset(1, 2),
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            children: [
-                              const Padding(
-                                padding: EdgeInsets.all(15),
-                                child: Icon(Icons.local_shipping_outlined, size: 50),
-                              ),
-                              Expanded(
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 15.0),
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
+                        child: IntrinsicHeight(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: MaterialTheme.blueColorScheme().secondaryContainer,
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color.fromARGB(255, 46, 49, 116).withOpacity(0.3),
+                                  spreadRadius: 2,
+                                  blurRadius: 9,
+                                  offset: const Offset(1, 2),
+                                ),
+                              ],
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 10.0),
+                              child: Row(
+                                children: [
+                                  const Padding(
+                                    padding: EdgeInsets.all(15),
+                                    child: Icon(Icons.local_shipping_outlined, size: 50),
+                                  ),
+                                  Expanded(
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 15.0),
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
-                                          const Icon(Icons.location_on_outlined, size: 10),
-                                          const SizedBox(width: 2),
-                                          Expanded(
-                                            child: Text(
-                                              order.deliveryAddress,
-                                              style: const TextStyle(
-                                                fontSize: 13.5,
-                                                fontWeight: FontWeight.bold,
+                                          Row(
+                                            children: [
+                                              const Icon(Icons.location_on_outlined, size: 10),
+                                              const SizedBox(width: 2),
+                                              Expanded(
+                                                child: Text(
+                                                  order.deliveryAddress,
+                                                  maxLines: 5, // or 3, depending on your layout
+                                                  overflow: TextOverflow.ellipsis,
+                                                  softWrap: true,
+                                                  style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold),
+                                                ),
                                               ),
-                                            ),
+                                            ],
                                           ),
+                                          const SizedBox(height: 4),
+                                          Row(
+                                            children: [
+                                              Text(order.trackingId, style: const TextStyle(fontSize: 11)),
+                                              const SizedBox(width: 10),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 3),
+                                          Text('~${order.distanceInKm} km', style: const TextStyle(fontSize: 11)),
+                                          Text('Weight: ${order.weightInKg} Kg', style: const TextStyle(fontSize: 12)),
+                                          Text('Priority: ${order.urgencyLevel}', style: const TextStyle(fontSize: 12)),
+                                          Text('Price: NPR ${order.wage}',
+                                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                                         ],
                                       ),
-                                      const SizedBox(height: 4),
-                                      Row(
-                                        children: [
-                                          Text(order.trackingId, style: const TextStyle(fontSize: 11)),
-                                          const SizedBox(width: 10),
-                                        ],
+                                    ),
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.all(15),
+                                    child: Transform.scale(
+                                      scale: 2,
+                                      child: Checkbox(
+                                        value: order.isSelected,
+                                        onChanged: (bool? newValue) {
+                                          setState(() {
+                                            order.isSelected = newValue ?? false;
+                                          });
+                                        },
                                       ),
-                                      const SizedBox(height: 3),
-                                      Text('~${order.distanceInKm} km', style: const TextStyle(fontSize: 11)),
-                                      Text('Weight: ${order.weightInKg} Kg', style: const TextStyle(fontSize: 12)),
-                                      Text('Priority: ${order.urgencyLevel}', style: const TextStyle(fontSize: 12)),
-                                      Text('Price: NPR ${order.wage}',
-                                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                                    ],
+                                    ),
                                   ),
-                                ),
+                                ],
                               ),
-                              Padding(
-                                padding: const EdgeInsets.all(15),
-                                child: Transform.scale(
-                                  scale: 2,
-                                  child: Checkbox(
-                                    value: order.isSelected,
-                                    onChanged: (bool? newValue) {
-                                      setState(() {
-                                        order.isSelected = newValue ?? false;
-                                      });
-                                    },
-                                  ),
-                                ),
-                              ),
-                            ],
+                            ),
                           ),
                         ),
                       );

@@ -36,7 +36,7 @@ class _EarningsViewState extends State<EarningsView> {
 
     try {
       final calculateResponse = await http.get(
-        Uri.parse('http://192.168.49.195:5183/api/earnings/calculate'),
+        Uri.parse('http://192.168.60.166:5183/api/earnings/calculate'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -56,7 +56,7 @@ class _EarningsViewState extends State<EarningsView> {
       }
 
       final historyResponse = await http.get(
-        Uri.parse('http://192.168.49.195:5183/api/earnings/history'),
+        Uri.parse('http://192.168.60.166:5183/api/earnings/history'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',

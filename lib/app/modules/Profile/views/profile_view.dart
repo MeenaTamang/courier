@@ -42,7 +42,7 @@ class _ProfileViewState extends State<ProfileView> {
       return;
     }
 
-    final url = Uri.parse('http://192.168.49.195:5183/api/workerdetails/getworkerdetails');
+    final url = Uri.parse('http://192.168.60.166:5183/api/workerdetails/getworkerdetails');
 
     try {
       final response = await http.get(
@@ -130,7 +130,7 @@ class _ProfileViewState extends State<ProfileView> {
               userData!['profileImagePath'] != null &&
               userData!['profileImagePath'].toString().isNotEmpty
           ? Image.network(
-              'http://192.168.49.195:5183/${userData!['profileImagePath']}',
+              'http://192.168.60.166:5183/${userData!['profileImagePath']}',
               fit: BoxFit.cover,
               width: 120,
               height: 120,
@@ -223,24 +223,29 @@ class _ProfileViewState extends State<ProfileView> {
 
   Widget _infoRow(IconData icon, String title, String info) {
     return Padding(
-      padding: const EdgeInsets.only(left: 70.0),
+      padding: const EdgeInsets.only(left: 70.0, right: 20),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(icon, size: 30, color: Colors.grey[700]),
           const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black),
-              ),
-              Text(
-                info,
-                style: const TextStyle(fontSize: 14, color: Colors.black),
-              ),
-            ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  info,
+                  style: const TextStyle(fontSize: 14, color: Colors.black),
+                  softWrap: true,
+                  overflow: TextOverflow.visible,
+                ),
+              ],
+            ),
           ),
         ],
       ),

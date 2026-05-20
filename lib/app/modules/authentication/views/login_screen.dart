@@ -31,7 +31,7 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       setState(() => _isLoading = true);
 
-      final url = "http://192.168.49.195:5183/api/login/login";
+      final url = "http://192.168.60.166:5183/api/login/login";
       final response = await http.post(
         Uri.parse(url),
         headers: {

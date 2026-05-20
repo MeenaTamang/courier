@@ -25,7 +25,7 @@ class _HistoryViewState extends State<HistoryView> {
   }
 
   Future<void> fetchHistoryOrders({bool isRefresh = false}) async {
-    const String url = 'http://192.168.49.195:5183/api/order/deliveredorders';
+    const String url = 'http://192.168.60.166:5183/api/order/deliveredorders';
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token');

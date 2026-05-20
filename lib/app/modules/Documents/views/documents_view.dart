@@ -14,7 +14,7 @@ class DocumentsView extends StatefulWidget {
     this.vehicleImagePath,
   });
 
-  static const String baseUrl = 'http://192.168.49.195:5183/';
+  static const String baseUrl = 'http://192.168.60.166:5183/';
 
   @override
   State<DocumentsView> createState() => _DocumentsViewState();

@@ -92,7 +92,7 @@ class _SignUpSecondState extends State<SignUpSecond> {
     setState(() => _isLoading = true);
 
     try {
-      var uri = Uri.parse("http://192.168.49.195:5183/api/registration/create");
+      var uri = Uri.parse("http://192.168.60.166:5183/api/registration/create");
       var request = http.MultipartRequest("POST", uri);
 
       request.fields['FullName'] = widget.fullName;
