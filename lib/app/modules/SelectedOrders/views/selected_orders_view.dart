@@ -25,7 +25,7 @@ class _SelectedOrdersViewState extends State<SelectedOrdersView> {
   }
 
   Future<void> fetchSelectedOrders({bool isRefresh = false}) async {
-    const String url = 'http://192.168.60.166:5183/api/order/inprogressorders';
+    const String url = 'https://barley-chimp-girdle.ngrok-free.dev/api/order/inprogressorders';
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token');
@@ -39,6 +39,7 @@ class _SelectedOrdersViewState extends State<SelectedOrdersView> {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
+          'ngrok-skip-browser-warning': 'Meena',
         },
       );
 
@@ -70,7 +71,7 @@ class _SelectedOrdersViewState extends State<SelectedOrdersView> {
     required int workerOrderId,
     required List orderId,
   }) async {
-    const String url = 'http://192.168.60.166:5183/api/order/savecompletedorders';
+    const String url = 'https://barley-chimp-girdle.ngrok-free.dev/api/order/savecompletedorders';
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token');
@@ -82,6 +83,7 @@ class _SelectedOrdersViewState extends State<SelectedOrdersView> {
       final Map<String, String> headers = {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
+        'ngrok-skip-browser-warning': 'Meena',
       };
 
       final Map<String, dynamic> body = {
@@ -96,12 +98,34 @@ class _SelectedOrdersViewState extends State<SelectedOrdersView> {
       );
 
       final Map<String, dynamic> jsonResponse = json.decode(response.body);
-      if (jsonResponse['success'] == true && jsonResponse['data'] is List) {
-        final List<dynamic> data = jsonResponse['data'];
-        setState(() {
-          orders = data.map((json) => Order.fromJson(json)).toList();
-          isLoading = false;
-        });
+      if (jsonResponse['success'] == true) {
+        // ── Save completed order IDs to SharedPreferences ─────────────────
+        // Merge with any previously saved completed IDs
+        final List<String> existing =
+            prefs.getStringList('completedOrderIds') ?? [];
+        final List<String> newIds =
+            List<int>.from(orderId).map((id) => id.toString()).toList();
+        final Set<String> merged = {...existing, ...newIds};
+        await prefs.setStringList('completedOrderIds', merged.toList());
+        // ─────────────────────────────────────────────────────────────────
+
+        if (jsonResponse['data'] is List) {
+          final List<dynamic> data = jsonResponse['data'];
+          setState(() {
+            orders = data.map((json) => Order.fromJson(json)).toList();
+            isLoading = false;
+          });
+        } else {
+          // no remaining orders returned — clear list
+          setState(() {
+            orders = [];
+            isLoading = false;
+          });
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Orders marked as completed!')),
+        );
       } else {
         throw Exception(jsonResponse['message'] ?? 'Order confirmation failed');
       }
@@ -179,7 +203,7 @@ class _SelectedOrdersViewState extends State<SelectedOrdersView> {
                                               Expanded(
                                                 child: Text(
                                                   order.deliveryAddress,
-                                                  maxLines: 5, // or 3, depending on your layout
+                                                  maxLines: 5,
                                                   overflow: TextOverflow.ellipsis,
                                                   softWrap: true,
                                                   style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold),

@@ -36,17 +36,23 @@ class _EarningsViewState extends State<EarningsView> {
 
     try {
       final calculateResponse = await http.get(
-        Uri.parse('http://192.168.60.166:5183/api/earnings/calculate'),
+        Uri.parse('https://barley-chimp-girdle.ngrok-free.dev/api/earnings/calculate'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'Meena', // Add this line
         },
       );
 
       if (calculateResponse.statusCode == 200) {
         final data = json.decode(calculateResponse.body);
         if (data['success']) {
-          final dynamic wagesValue = data['data']['totalWages'];
+          //final dynamic wagesValue = data['data']['totalWages'];
+          print('Earnings response: ${data}'); // ADD THIS TEMPORARILY to see exact keys
+
+          final dynamic wagesValue = data['data']['totalWage'] 
+          ?? data['data']['totalWages'] 
+          ?? 0;
           if (wagesValue != null) {
             totalWages = (wagesValue as num).toDouble();
           } else {
@@ -56,10 +62,11 @@ class _EarningsViewState extends State<EarningsView> {
       }
 
       final historyResponse = await http.get(
-        Uri.parse('http://192.168.60.166:5183/api/earnings/history'),
+        Uri.parse('https://barley-chimp-girdle.ngrok-free.dev/api/earnings/history'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'Meena', // Add this line
         },
       );
 

@@ -14,7 +14,7 @@ class DocumentsView extends StatefulWidget {
     this.vehicleImagePath,
   });
 
-  static const String baseUrl = 'http://192.168.60.166:5183/';
+  static const String baseUrl = 'https://barley-chimp-girdle.ngrok-free.dev';
 
   @override
   State<DocumentsView> createState() => _DocumentsViewState();
@@ -115,6 +115,7 @@ class _DocumentsViewState extends State<DocumentsView> {
       decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
       child: Image.network(
         imageUrl,
+          headers: const {'ngrok-skip-browser-warning': 'Meena'}, // Add this line
         fit: BoxFit.cover,
         errorBuilder: (context, error, stackTrace) =>
             const Center(child: Text("Failed to load image", style: TextStyle(color: Colors.red))),

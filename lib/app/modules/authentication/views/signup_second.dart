@@ -92,8 +92,9 @@ class _SignUpSecondState extends State<SignUpSecond> {
     setState(() => _isLoading = true);
 
     try {
-      var uri = Uri.parse("http://192.168.60.166:5183/api/registration/create");
+      var uri = Uri.parse("https://barley-chimp-girdle.ngrok-free.dev/api/registration/create");
       var request = http.MultipartRequest("POST", uri);
+      request.headers['ngrok-skip-browser-warning'] = 'Meena'; // Add this line
 
       request.fields['FullName'] = widget.fullName;
       request.fields['Email'] = widget.email;

@@ -42,7 +42,7 @@ class _ProfileViewState extends State<ProfileView> {
       return;
     }
 
-    final url = Uri.parse('http://192.168.60.166:5183/api/workerdetails/getworkerdetails');
+    final url = Uri.parse('https://barley-chimp-girdle.ngrok-free.dev/api/workerdetails/getworkerdetails');
 
     try {
       final response = await http.get(
@@ -50,6 +50,7 @@ class _ProfileViewState extends State<ProfileView> {
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'Meena', // Add this line
         },
       );
 
@@ -130,7 +131,8 @@ class _ProfileViewState extends State<ProfileView> {
               userData!['profileImagePath'] != null &&
               userData!['profileImagePath'].toString().isNotEmpty
           ? Image.network(
-              'http://192.168.60.166:5183/${userData!['profileImagePath']}',
+              'https://barley-chimp-girdle.ngrok-free.dev/${userData!['profileImagePath']}',
+              headers: const {'ngrok-skip-browser-warning': 'Meena'}, // Add this line
               fit: BoxFit.cover,
               width: 120,
               height: 120,

@@ -26,17 +26,18 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _passController = TextEditingController();
 
   bool _isLoading = false;
-
   Future<void> loginUser() async {
     try {
       setState(() => _isLoading = true);
 
-      final url = "http://192.168.60.166:5183/api/login/login";
+      final url = "https://barley-chimp-girdle.ngrok-free.dev/api/login/login";
+      
       final response = await http.post(
         Uri.parse(url),
         headers: {
           "Content-Type": "application/json",
           "Accept": "application/json",
+          "ngrok-skip-browser-warning": "Meena"
         },
         body: jsonEncode({
           "email": _emailController.text,
@@ -78,7 +79,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(displayMessage)));
       }
-    } catch (e) {
+    } catch (e, stack) {
+      print(e);
+      print(stack);
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
     } finally {
       setState(() => _isLoading = false);

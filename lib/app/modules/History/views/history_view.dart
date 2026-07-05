@@ -25,7 +25,7 @@ class _HistoryViewState extends State<HistoryView> {
   }
 
   Future<void> fetchHistoryOrders({bool isRefresh = false}) async {
-    const String url = 'http://192.168.60.166:5183/api/order/deliveredorders';
+    const String url = 'https://barley-chimp-girdle.ngrok-free.dev/api/order/deliveredorders';
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token');
@@ -39,6 +39,7 @@ class _HistoryViewState extends State<HistoryView> {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
+          'ngrok-skip-browser-warning': 'Meena', // Add this line
         },
       );
 
