@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:courier/app/core/theme/theme.dart';
+import 'package:courier/app/data/services/websocket_service.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:jwt_decoder/jwt_decoder.dart';
@@ -25,15 +25,24 @@ class _OrdersViewState extends State<OrdersView> {
       RefreshController(initialRefresh: false);
 
   // ── MAP state variables ────────────────────────────────────────────────────
-  final MapController _mapController = MapController();
+  GoogleMapController? _mapController;
   bool _hasRoute = false;
   bool isTracking = false;
   Timer? _locationTimer;
+
+  // ── Real-time services ───────────────────────────────────────────────────────
+  final WebSocketService _wsService = WebSocketService.instance;
+  String? _currentOrderId;
+  StreamSubscription? _locationUpdateSubscription;
 
   // Hub / worker / stop data
   LatLng? _hubLatLng;
   LatLng? _workerLatLng;
   List<_StopInfo> _stops = [];
+
+  // ── ORS road-following route polyline ──────────────────────────────────────
+  List<LatLng> _routePoints = [];
+  bool _isRouteLoading = false;
 
   // ── Track completed order IDs so marker stays green after refresh ──────────
   final Set<String> _completedOrderIds = {};
@@ -46,9 +55,15 @@ class _OrdersViewState extends State<OrdersView> {
   static const String baseUrl =
       'https://barley-chimp-girdle.ngrok-free.dev';
 
+  // ── OpenRouteService API key ───────────────────────────────────────────────
+  // Sign up free at https://openrouteservice.org/dev/#/signup (email only)
+  // then paste your key below.
+  static const String orsApiKey = 'YOUR_OPENROUTESERVICE_API_KEY';
+
   @override
   void initState() {
     super.initState();
+    _initializeServices();
     fetchOrders();
     fetchRoute();
   }
@@ -56,13 +71,48 @@ class _OrdersViewState extends State<OrdersView> {
   @override
   void dispose() {
     _locationTimer?.cancel();
+    _locationUpdateSubscription?.cancel();
+    _wsService.disconnect();
+    _mapController?.dispose();
     super.dispose();
+  }
+
+  // ── Initialize real-time services ────────────────────────────────────────────
+  Future<void> _initializeServices() async {
+    // Set up WebSocket callbacks
+    _wsService.onLocationUpdate = (data) {
+      if (mounted) {
+        final lat = data['lat'] as double;
+        final lng = data['lng'] as double;
+        final pos = LatLng(lat, lng);
+        setState(() => _workerLatLng = pos);
+        _mapController?.animateCamera(CameraUpdate.newLatLng(pos));
+      }
+    };
+
+    _wsService.onOrderStatusUpdate = (status) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Order status: $status')),
+        );
+        fetchRoute(); // Refresh to get updated stop status
+      }
+    };
+
+    _wsService.onError = (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('WebSocket error: $error')),
+        );
+      }
+    };
   }
 
   // ── Logout helper ──────────────────────────────────────────────────────────
   Future<void> _logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
+    _wsService.disconnect();
     if (!mounted) return;
     Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
   }
@@ -255,14 +305,113 @@ class _OrdersViewState extends State<OrdersView> {
       });
 
       WidgetsBinding.instance.addPostFrameCallback((_) => _fitBounds());
+
+      // Fetch the road-following route through remaining stops, in order.
+      _fetchOrsRoute();
     } catch (e) {
       print('Route fetch error: $e');
+    }
+  }
+
+  // ── Fetch a real, road-following route from OpenRouteService ──────────────
+  // Draws hub → stop 1 → stop 2 → ... (only stops NOT yet completed, in
+  // sequence order) as a single driving-car route, then stores the returned
+  // road geometry so it can be rendered as a Polyline.
+  Future<void> _fetchOrsRoute() async {
+    if (_hubLatLng == null) return;
+
+    final pendingStops = _stops
+        .where((s) => !_completedOrderIds.contains(s.orderId))
+        .toList()
+      ..sort((a, b) =>
+          (int.tryParse(a.sequence) ?? 0).compareTo(int.tryParse(b.sequence) ?? 0));
+
+    if (pendingStops.isEmpty) {
+      if (mounted) setState(() => _routePoints = []);
+      return;
+    }
+
+    final waypoints = [
+      _hubLatLng!,
+      ...pendingStops.map((s) => s.position),
+    ];
+
+    if (mounted) setState(() => _isRouteLoading = true);
+
+    try {
+      final response = await http.post(
+        Uri.parse(
+            'https://api.openrouteservice.org/v2/directions/driving-car/geojson'),
+        headers: {
+          'Authorization': orsApiKey,
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'coordinates':
+              waypoints.map((p) => [p.longitude, p.latitude]).toList(),
+        }),
+      );
+
+      if (response.statusCode != 200) {
+        print('ORS route error: ${response.statusCode} ${response.body}');
+        if (mounted) setState(() => _isRouteLoading = false);
+        return;
+      }
+
+      final decoded = jsonDecode(response.body);
+      final coords =
+          decoded['features'][0]['geometry']['coordinates'] as List;
+      final points = coords
+          .map<LatLng>(
+              (c) => LatLng((c[1] as num).toDouble(), (c[0] as num).toDouble()))
+          .toList();
+
+      if (!mounted) return;
+      setState(() {
+        _routePoints = points;
+        _isRouteLoading = false;
+      });
+    } catch (e) {
+      print('ORS route fetch failed: $e');
+      if (mounted) setState(() => _isRouteLoading = false);
     }
   }
 
   // ── Mark a stop as completed manually (tap the marker) ────────────────────
   void _markStopCompleted(String orderId) {
     setState(() => _completedOrderIds.add(orderId));
+
+    // Send completion status via WebSocket
+    _wsService.sendOrderStatus(orderId, 'delivered');
+
+    // Trigger milestone notification via backend
+    _sendMilestoneNotification(orderId, 'delivered');
+
+    // Redraw the route without the just-completed stop
+    _fetchOrsRoute();
+  }
+
+  // ── Send milestone notification to backend ───────────────────────────────────
+  Future<void> _sendMilestoneNotification(String orderId, String milestone) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+
+      await http.post(
+        Uri.parse('$baseUrl/api/order/milestone'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'Meena',
+        },
+        body: jsonEncode({
+          'orderId': orderId,
+          'milestone': milestone,
+        }),
+      );
+    } catch (e) {
+      print('Failed to send milestone notification: $e');
+    }
   }
 
   // ── live location tracking ─────────────────────────────────────────────────
@@ -278,8 +427,14 @@ class _OrdersViewState extends State<OrdersView> {
 
     setState(() => isTracking = true);
 
-    _locationTimer =
-        Timer.periodic(const Duration(seconds: 15), (_) async {
+    // Connect to WebSocket for real-time location updates
+    if (_stops.isNotEmpty) {
+      _currentOrderId = _stops.first.orderId; // Use first order ID for room
+      await _wsService.connect(_currentOrderId!);
+    }
+
+    // Send location updates via WebSocket every 5 seconds
+    _locationTimer = Timer.periodic(const Duration(seconds: 5), (_) async {
       try {
         final position = await Geolocator.getCurrentPosition(
             desiredAccuracy: LocationAccuracy.high);
@@ -288,22 +443,10 @@ class _OrdersViewState extends State<OrdersView> {
         if (!mounted) return;
         setState(() => _workerLatLng = pos);
 
-        _mapController.move(pos, _mapController.camera.zoom);
+        _mapController?.animateCamera(CameraUpdate.newLatLng(pos));
 
-        final prefs = await SharedPreferences.getInstance();
-        final token = prefs.getString('token');
-        await http.put(
-          Uri.parse('$baseUrl/api/order/updatelocation'),
-          headers: {
-            'Authorization': 'Bearer $token',
-            'Content-Type': 'application/json',
-            'ngrok-skip-browser-warning': 'Meena',
-          },
-          body: jsonEncode({
-            'lat': position.latitude,
-            'lng': position.longitude,
-          }),
-        );
+        // Send location via WebSocket instead of HTTP
+        _wsService.sendLocationUpdate(position.latitude, position.longitude);
       } catch (e) {
         print('Location update error: $e');
       }
@@ -312,11 +455,15 @@ class _OrdersViewState extends State<OrdersView> {
 
   void stopTracking() {
     _locationTimer?.cancel();
+    _wsService.disconnect();
+
     setState(() => isTracking = false);
   }
 
   // ── fit map bounds to all markers ─────────────────────────────────────────
   void _fitBounds() {
+    if (_mapController == null) return;
+
     final allPoints = [
       if (_hubLatLng != null) _hubLatLng!,
       ..._stops.map((s) => s.position),
@@ -331,119 +478,95 @@ class _OrdersViewState extends State<OrdersView> {
     final minLng = lngs.reduce((a, b) => a < b ? a : b);
     final maxLng = lngs.reduce((a, b) => a > b ? a : b);
 
-    _mapController.fitCamera(
-      CameraFit.bounds(
-        bounds: LatLngBounds(
-          LatLng(minLat - 0.01, minLng - 0.01),
-          LatLng(maxLat + 0.01, maxLng + 0.01),
+    _mapController!.animateCamera(
+      CameraUpdate.newLatLngBounds(
+        LatLngBounds(
+          southwest: LatLng(minLat - 0.01, minLng - 0.01),
+          northeast: LatLng(maxLat + 0.01, maxLng + 0.01),
         ),
-        padding: const EdgeInsets.all(60),
+        60,
       ),
     );
   }
 
   // ── Build markers ──────────────────────────────────────────────────────────
-  List<Marker> _buildMarkers() {
+  // NOTE: google_maps_flutter markers can't host arbitrary widget trees the
+  // way flutter_map's Marker could, so custom badges/sequence overlays are
+  // approximated with colored pins (hue) + InfoWindow title/snippet instead.
+  Set<Marker> _buildMarkers() {
     final List<Marker> result = [];
 
     // ── Hub marker — blue normally, green when ALL stops completed ───────────
     if (_hubLatLng != null) {
       final bool hubDone = _allStopsCompleted;
-      result.add(Marker(
-        point: _hubLatLng!,
-        width: 48,
-        height: 48,
-        child: Tooltip(
-          message: hubDone
-              ? '✅ All deliveries complete — return to hub'
-              : '📦 Hub — Pick up here first',
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 400),
-            decoration: BoxDecoration(
-              color: hubDone
-                  ? Colors.green.withOpacity(0.15)
-                  : Colors.blue.withOpacity(0.10),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              hubDone ? Icons.warehouse : Icons.warehouse_outlined,
-              color: hubDone ? Colors.green : Colors.blue,
-              size: 36,
-            ),
+      result.add(
+        Marker(
+          markerId: const MarkerId('hub'),
+          position: _hubLatLng!,
+          icon: BitmapDescriptor.defaultMarkerWithHue(
+            hubDone ? BitmapDescriptor.hueGreen : BitmapDescriptor.hueAzure,
+          ),
+          infoWindow: InfoWindow(
+            title: hubDone
+                ? '✅ All deliveries complete — return to hub'
+                : '📦 Hub — Pick up here first',
           ),
         ),
-      ));
+      );
     }
 
     // ── Stop markers — red normally, green when completed ────────────────────
     for (final stop in _stops) {
       final bool done = _completedOrderIds.contains(stop.orderId);
-      result.add(Marker(
-        point: stop.position,
-        width: 44,
-        height: 56,
-        child: GestureDetector(
-          onTap: () => _showCompleteDialog(stop),
-          child: Tooltip(
-            message: done
-                ? '✅ Stop ${stop.sequence} delivered\n${stop.address}'
-                : 'Stop ${stop.sequence}\n${stop.address}',
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Icon(
-                  Icons.location_pin,
-                  // Green when done, red when pending
-                  color: done ? Colors.green : Colors.red,
-                  size: 40,
-                ),
-                Positioned(
-                  top: 4,
-                  child: Text(
-                    stop.sequence,
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold),
-                  ),
-                ),
-                // Small tick badge when completed
-                if (done)
-                  Positioned(
-                    bottom: 0,
-                    right: 0,
-                    child: Container(
-                      width: 16,
-                      height: 16,
-                      decoration: const BoxDecoration(
-                        color: Colors.green,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.check,
-                          color: Colors.white, size: 11),
-                    ),
-                  ),
-              ],
-            ),
+      result.add(
+        Marker(
+          markerId: MarkerId('stop_${stop.orderId}'),
+          position: stop.position,
+          icon: BitmapDescriptor.defaultMarkerWithHue(
+            done ? BitmapDescriptor.hueGreen : BitmapDescriptor.hueRed,
           ),
+          infoWindow: InfoWindow(
+            title: done
+                ? '✅ Stop ${stop.sequence} delivered'
+                : 'Stop ${stop.sequence}',
+            snippet: stop.address,
+          ),
+          onTap: () => _showCompleteDialog(stop),
         ),
-      ));
+      );
     }
 
     // ── Worker / you-are-here marker ─────────────────────────────────────────
     if (_workerLatLng != null) {
-      result.add(Marker(
-        point: _workerLatLng!,
-        width: 40,
-        height: 40,
-        child: const Tooltip(
-          message: '🚴 You are here',
-          child: Icon(Icons.directions_bike, color: Colors.green, size: 36),
+      result.add(
+        Marker(
+          markerId: const MarkerId('worker'),
+          position: _workerLatLng!,
+          icon: BitmapDescriptor.defaultMarkerWithHue(
+              BitmapDescriptor.hueGreen),
+          infoWindow: const InfoWindow(title: '🚴 You are here'),
+          zIndex: 2,
         ),
-      ));
+      );
     }
 
-    return result;
+    return result.toSet();
+  }
+
+  // ── Build the road-following route polyline ────────────────────────────────
+  Set<Polyline> _buildPolylines() {
+    if (_routePoints.isEmpty) return {};
+    return {
+      Polyline(
+        polylineId: const PolylineId('ors_route'),
+        points: _routePoints,
+        color: Colors.blueAccent,
+        width: 5,
+        startCap: Cap.roundCap,
+        endCap: Cap.roundCap,
+        jointType: JointType.round,
+      ),
+    };
   }
 
   // ── Confirm-delivery dialog shown when tapping a stop marker ──────────────
@@ -514,26 +637,50 @@ class _OrdersViewState extends State<OrdersView> {
                 // ── MAP view ───────────────────────────────────────────────
                 ? Stack(
                     children: [
-                      FlutterMap(
-                        mapController: _mapController,
-                        options: MapOptions(
-                          initialCenter: _hubLatLng ?? const LatLng(0, 0),
-                          initialZoom: 13,
-                          minZoom: 3,
-                          maxZoom: 19,
-                          interactionOptions: const InteractionOptions(
-                            flags: InteractiveFlag.all,
+                      GoogleMap(
+                        initialCameraPosition: CameraPosition(
+                          target: _hubLatLng ?? const LatLng(0, 0),
+                          zoom: 13,
+                        ),
+                        minMaxZoomPreference:
+                            const MinMaxZoomPreference(3, 19),
+                        zoomControlsEnabled: false,
+                        mapToolbarEnabled: false,
+                        myLocationButtonEnabled: false,
+                        markers: _buildMarkers(),
+                        polylines: _buildPolylines(),
+                        onMapCreated: (controller) {
+                          _mapController = controller;
+                          WidgetsBinding.instance
+                              .addPostFrameCallback((_) => _fitBounds());
+                        },
+                      ),
+
+                      // ── Route loading indicator — top left ─────────────
+                      if (_isRouteLoading)
+                        Positioned(
+                          top: 12,
+                          left: 12,
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.15),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
                           ),
                         ),
-                        children: [
-                          TileLayer(
-                            urlTemplate:
-                                'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                            userAgentPackageName: 'com.example.courier',
-                          ),
-                          MarkerLayer(markers: _buildMarkers()),
-                        ],
-                      ),
 
                       // ── Progress chip — top center ─────────────────────
                       Positioned(
@@ -596,10 +743,8 @@ class _OrdersViewState extends State<OrdersView> {
                               backgroundColor: Colors.white,
                               foregroundColor: Colors.black87,
                               tooltip: 'Zoom in',
-                              onPressed: () => _mapController.move(
-                                _mapController.camera.center,
-                                _mapController.camera.zoom + 1,
-                              ),
+                              onPressed: () => _mapController
+                                  ?.animateCamera(CameraUpdate.zoomIn()),
                               child: const Icon(Icons.add),
                             ),
                             const SizedBox(height: 8),
@@ -608,10 +753,8 @@ class _OrdersViewState extends State<OrdersView> {
                               backgroundColor: Colors.white,
                               foregroundColor: Colors.black87,
                               tooltip: 'Zoom out',
-                              onPressed: () => _mapController.move(
-                                _mapController.camera.center,
-                                _mapController.camera.zoom - 1,
-                              ),
+                              onPressed: () => _mapController
+                                  ?.animateCamera(CameraUpdate.zoomOut()),
                               child: const Icon(Icons.remove),
                             ),
                           ],

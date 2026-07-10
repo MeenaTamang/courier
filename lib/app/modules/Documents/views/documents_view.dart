@@ -6,15 +6,19 @@ class DocumentsView extends StatefulWidget {
   final String? licenseImagePath;
   final String? nidImagePath;
   final String? vehicleImagePath;
+  final String? authToken; // Pass in your JWT/auth token here
 
   const DocumentsView({
     super.key,
     this.licenseImagePath,
     this.nidImagePath,
     this.vehicleImagePath,
+    this.authToken,
   });
 
-  static const String baseUrl = 'https://barley-chimp-girdle.ngrok-free.dev';
+  // Root of your server, NOT the API route.
+  // Static files (images/uploads/...) are served relative to this.
+  static const String baseUrl = 'https://barley-chimp-girdle.ngrok-free.dev/';
 
   @override
   State<DocumentsView> createState() => _DocumentsViewState();
@@ -50,6 +54,17 @@ class _DocumentsViewState extends State<DocumentsView> {
     });
 
     _refreshController.refreshCompleted();
+  }
+
+  // Builds the headers sent with every image request.
+  Map<String, String> get _imageHeaders {
+    final headers = <String, String>{
+      'ngrok-skip-browser-warning': 'Meena',
+    };
+    if (widget.authToken != null && widget.authToken!.isNotEmpty) {
+      headers['Authorization'] = 'Bearer ${widget.authToken}';
+    }
+    return headers;
   }
 
   @override
@@ -115,10 +130,17 @@ class _DocumentsViewState extends State<DocumentsView> {
       decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
       child: Image.network(
         imageUrl,
-          headers: const {'ngrok-skip-browser-warning': 'Meena'}, // Add this line
+        headers: _imageHeaders,
         fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) =>
-            const Center(child: Text("Failed to load image", style: TextStyle(color: Colors.red))),
+        errorBuilder: (context, error, stackTrace) {
+          // TEMP: remove this print once things are working,
+          // but keep it for now to see the real cause of failure
+          // (404, 401, CORS, malformed URL, etc.)
+          debugPrint('Image load error for $imageUrl: $error');
+          return const Center(
+            child: Text("Failed to load image", style: TextStyle(color: Colors.red)),
+          );
+        },
         loadingBuilder: (context, child, loadingProgress) {
           if (loadingProgress == null) return child;
           return const Center(child: CircularProgressIndicator());
